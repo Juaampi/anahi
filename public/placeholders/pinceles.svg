@@ -1,0 +1,12 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="900" rx="72" fill="#FFF9F3"/>
+  <circle cx="450" cy="420" r="270" fill="#FDEEDC"/>
+  <rect x="290" y="220" width="40" height="360" rx="20" transform="rotate(24 290 220)" fill="#D39B58"/>
+  <rect x="410" y="190" width="40" height="390" rx="20" transform="rotate(10 410 190)" fill="#B77B3F"/>
+  <rect x="520" y="220" width="40" height="360" rx="20" transform="rotate(-8 520 220)" fill="#D39B58"/>
+  <path d="M304 212L340 250L279 278L304 212Z" fill="#473122"/>
+  <path d="M421 182L457 220L397 248L421 182Z" fill="#473122"/>
+  <path d="M548 210L585 248L523 276L548 210Z" fill="#473122"/>
+  <rect x="210" y="620" width="480" height="90" rx="30" fill="#FFFFFF"/>
+  <text x="450" y="675" text-anchor="middle" fill="#3B2E20" font-family="Arial, sans-serif" font-size="52" font-weight="700">Pinceles y Accesorios</text>
+</svg>

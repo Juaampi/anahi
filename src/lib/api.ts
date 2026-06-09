@@ -1,0 +1,174 @@
+import type {
+  AdminUser,
+  Category,
+  CheckoutInput,
+  Order,
+  Product,
+  StorefrontPayload,
+} from '../types'
+import { fallbackCategories, fallbackProducts, fallbackStorefront } from './fallback-data'
+
+const API_BASE = '/.netlify/functions/api'
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers || {}),
+    },
+    ...init,
+  })
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'No se pudo completar la solicitud.')
+  }
+
+  return response.json() as Promise<T>
+}
+
+export const api = {
+  storefront: async () => {
+    try {
+      return await request<StorefrontPayload>('/storefront')
+    } catch {
+      return fallbackStorefront
+    }
+  },
+  products: async (filters: URLSearchParams) => {
+    try {
+      return await request<Product[]>(`/products?${filters.toString()}`)
+    } catch {
+      let items = [...fallbackProducts]
+      const category = filters.get('category')
+      const q = filters.get('q')?.toLowerCase()
+      const featured = filters.get('featured')
+      const minPrice = Number(filters.get('minPrice') || 0)
+      const maxPrice = Number(filters.get('maxPrice') || 0)
+      const sort = filters.get('sort') || 'featured'
+
+      if (category) {
+        items = items.filter(
+          (item) =>
+            item.categoryId === category ||
+            item.categoryName.toLowerCase().includes(category.toLowerCase()) ||
+            item.slug.includes(category),
+        )
+      }
+      if (q) {
+        items = items.filter((item) => item.name.toLowerCase().includes(q))
+      }
+      if (featured === 'true') {
+        items = items.filter((item) => item.featured)
+      }
+      if (minPrice) {
+        items = items.filter((item) => item.price >= minPrice)
+      }
+      if (maxPrice) {
+        items = items.filter((item) => item.price <= maxPrice)
+      }
+
+      if (sort === 'price-asc') return items.sort((a, b) => a.price - b.price)
+      if (sort === 'price-desc') return items.sort((a, b) => b.price - a.price)
+      if (sort === 'newest') return items.reverse()
+      return items.sort((a, b) => Number(b.featured) - Number(a.featured))
+    }
+  },
+  productBySlug: async (slug: string) => {
+    try {
+      return await request<Product>(`/products/${slug}`)
+    } catch {
+      const found = fallbackProducts.find((item) => item.slug === slug)
+      if (!found) {
+        throw new Error('Producto no encontrado.')
+      }
+      return found
+    }
+  },
+  categories: async () => {
+    try {
+      return await request<Category[]>('/categories')
+    } catch {
+      return fallbackCategories
+    }
+  },
+  login: (email: string, password: string) =>
+    request<{ token: string; user: AdminUser }>('/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+  adminProducts: (token: string) =>
+    request<Product[]>('/admin/products', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  saveProduct: (token: string, product: Partial<Product>) =>
+    request<Product>('/admin/products', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(product),
+    }),
+  updateProduct: (token: string, id: string, product: Partial<Product>) =>
+    request<Product>(`/admin/products/${id}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(product),
+    }),
+  deleteProduct: (token: string, id: string) =>
+    request<{ success: true }>(`/admin/products/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  adminCategories: (token: string) =>
+    request<Category[]>('/admin/categories', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  saveCategory: (token: string, category: Partial<Category>) =>
+    request<Category>('/admin/categories', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(category),
+    }),
+  updateCategory: (token: string, id: string, category: Partial<Category>) =>
+    request<Category>(`/admin/categories/${id}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(category),
+    }),
+  deleteCategory: (token: string, id: string) =>
+    request<{ success: true }>(`/admin/categories/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  adminOrders: (token: string) =>
+    request<Order[]>('/admin/orders', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  updateOrderStatus: (token: string, id: string, status: string) =>
+    request<Order>(`/admin/orders/${id}/status`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status }),
+    }),
+  createOrder: (payload: CheckoutInput) =>
+    request<{ order: Order; whatsappUrl?: string }>('/orders', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  createPreference: (payload: CheckoutInput) =>
+    request<{ preferenceId: string; initPoint?: string; sandboxInitPoint?: string }>(
+      '/checkout/create-preference',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+    ),
+  signCloudinaryUpload: (token: string, folder: string) =>
+    request<{ timestamp: number; signature: string; apiKey: string; cloudName: string; folder: string }>(
+      '/cloudinary/signature',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ folder }),
+      },
+    ),
+}

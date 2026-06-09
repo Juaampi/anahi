@@ -1,0 +1,11 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="900" rx="72" fill="#F8F8FB"/>
+  <circle cx="450" cy="420" r="270" fill="#ECECF7"/>
+  <rect x="225" y="290" width="450" height="210" rx="52" fill="#FFFFFF"/>
+  <rect x="275" y="340" width="350" height="110" rx="26" fill="#D9DCE8"/>
+  <rect x="320" y="520" width="60" height="95" rx="18" fill="#5C6476"/>
+  <rect x="410" y="520" width="80" height="95" rx="18" fill="#8892A7"/>
+  <rect x="520" y="520" width="60" height="95" rx="18" fill="#5C6476"/>
+  <rect x="200" y="635" width="500" height="90" rx="30" fill="#FFFFFF"/>
+  <text x="450" y="690" text-anchor="middle" fill="#2B3140" font-family="Arial, sans-serif" font-size="52" font-weight="700">Cabinas y Herramientas</text>
+</svg>

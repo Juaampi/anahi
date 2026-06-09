@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #111827;
+  --color-accent: #f05d43;
+  --color-accent-soft: #fff1ed;
+  --color-border: #e7dfda;
+  --color-surface: #fffaf8;
+  --color-surface-card: #ffffff;
+  --color-text: #1f2937;
+  --color-muted: #6b7280;
+  color: var(--color-text);
+  background: var(--color-surface);
+  font-family: "Poppins", Arial, Helvetica, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top left, rgba(240, 93, 67, 0.08), transparent 20%),
+    radial-gradient(circle at right 20%, rgba(252, 211, 77, 0.14), transparent 18%),
+    linear-gradient(180deg, #fffaf8 0%, #fff7f3 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-display {
+  font-family: "Montserrat", "Poppins", Arial, sans-serif;
+}
+
+::selection {
+  background: rgba(240, 93, 67, 0.18);
+  color: #111827;
+}
+
+.product-gallery-main .swiper-button-prev,
+.product-gallery-main .swiper-button-next {
+  color: #111827;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.12);
+}
+
+.product-gallery-main .swiper-button-prev::after,
+.product-gallery-main .swiper-button-next::after {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.product-gallery-main .swiper-pagination-bullet {
+  background: rgba(17, 24, 39, 0.24);
+  opacity: 1;
+}
+
+.product-gallery-main .swiper-pagination-bullet-active {
+  background: var(--color-accent);
+}
+
+.product-gallery-thumbs .swiper-slide-thumb-active button {
+  border-color: rgba(240, 93, 67, 0.75);
+  box-shadow: 0 0 0 1px rgba(240, 93, 67, 0.75);
+}

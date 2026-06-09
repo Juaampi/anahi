@@ -1,0 +1,11 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="900" rx="72" fill="#FFF8FB"/>
+  <circle cx="450" cy="420" r="270" fill="#FEE6F5"/>
+  <circle cx="315" cy="335" r="62" fill="#FF98C7"/>
+  <circle cx="445" cy="285" r="62" fill="#B58CFF"/>
+  <circle cx="575" cy="355" r="62" fill="#7FDBFF"/>
+  <circle cx="365" cy="465" r="62" fill="#FFD770"/>
+  <circle cx="505" cy="505" r="62" fill="#FF8A80"/>
+  <rect x="220" y="600" width="460" height="90" rx="30" fill="#FFFFFF"/>
+  <text x="450" y="655" text-anchor="middle" fill="#32233A" font-family="Arial, sans-serif" font-size="54" font-weight="700">Nail Art</text>
+</svg>

@@ -1,0 +1,9 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="900" rx="72" fill="#FFF8F1"/>
+  <circle cx="450" cy="410" r="265" fill="#FFE4D4"/>
+  <rect x="265" y="255" width="110" height="320" rx="38" fill="#F2B18B"/>
+  <rect x="395" y="215" width="110" height="360" rx="38" fill="#DFA07E"/>
+  <rect x="525" y="255" width="110" height="320" rx="38" fill="#B97A56"/>
+  <rect x="250" y="585" width="400" height="90" rx="30" fill="#FFFFFF"/>
+  <text x="450" y="640" text-anchor="middle" fill="#3B2A1D" font-family="Arial, sans-serif" font-size="56" font-weight="700">Polygel</text>
+</svg>

@@ -1,0 +1,11 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="900" rx="72" fill="#F8FBFF"/>
+  <circle cx="450" cy="420" r="270" fill="#E8F2FF"/>
+  <rect x="250" y="250" width="400" height="220" rx="46" fill="#DDEBFF"/>
+  <rect x="285" y="285" width="330" height="150" rx="30" fill="#FFFFFF"/>
+  <rect x="245" y="505" width="110" height="90" rx="28" fill="#BCD7FF"/>
+  <rect x="395" y="505" width="110" height="90" rx="28" fill="#90B7FF"/>
+  <rect x="545" y="505" width="110" height="90" rx="28" fill="#C8A7FF"/>
+  <rect x="240" y="615" width="420" height="90" rx="30" fill="#FFFFFF"/>
+  <text x="450" y="670" text-anchor="middle" fill="#22324D" font-family="Arial, sans-serif" font-size="56" font-weight="700">Soft Gel</text>
+</svg>

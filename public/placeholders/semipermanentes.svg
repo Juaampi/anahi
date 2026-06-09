@@ -1,0 +1,9 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="900" rx="72" fill="#FFF6F3"/>
+  <circle cx="450" cy="450" r="280" fill="#FDE2EA"/>
+  <rect x="250" y="210" width="120" height="330" rx="42" fill="#FF7DA8"/>
+  <rect x="390" y="180" width="120" height="360" rx="42" fill="#F7B6CF"/>
+  <rect x="530" y="230" width="120" height="310" rx="42" fill="#C998FF"/>
+  <rect x="280" y="540" width="340" height="90" rx="30" fill="#FFFFFF"/>
+  <text x="450" y="595" text-anchor="middle" fill="#2A2333" font-family="Arial, sans-serif" font-size="52" font-weight="700">Semipermanentes</text>
+</svg>

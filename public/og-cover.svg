@@ -1,0 +1,11 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#050505"/>
+  <circle cx="980" cy="90" r="210" fill="#EC1C8F" fill-opacity="0.3"/>
+  <circle cx="170" cy="560" r="220" fill="#FFFFFF" fill-opacity="0.12"/>
+  <text x="90" y="255" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700">
+    Anahi Nails Diamond
+  </text>
+  <text x="90" y="335" fill="#F7CFE2" font-family="Arial, Helvetica, sans-serif" font-size="32">
+    Ecommerce premium para manicuria, esmaltes e insumos profesionales.
+  </text>
+</svg>
