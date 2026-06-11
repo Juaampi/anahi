@@ -17,7 +17,7 @@ export function ClosingCtaSection() {
           <div className="mt-8">
             <Link
               to="/productos"
-              className="inline-flex rounded-full bg-[var(--color-primary)] px-6 py-4 text-sm font-semibold !text-white"
+              className="btn-primary inline-flex rounded-full px-6 py-4 text-sm font-semibold"
             >
               Ir a la tienda
             </Link>

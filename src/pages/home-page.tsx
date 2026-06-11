@@ -9,6 +9,7 @@ import { FeaturedGrid } from '../components/home/featured-grid'
 import { HeroSection } from '../components/home/hero-section'
 import { InfoCardsSection } from '../components/home/info-cards-section'
 import { MapSection } from '../components/home/map-section'
+import { MenuGalleryStrip } from '../components/home/menu-gallery-strip'
 import { PromoEditorialSection } from '../components/home/promo-editorial-section'
 import { WhySection } from '../components/home/why-section'
 import { fallbackStorefront } from '../lib/fallback-data'
@@ -24,6 +25,7 @@ export function HomePage() {
 
   return (
     <>
+      <MenuGalleryStrip />
       <HeroSection />
       <BenefitsSection />
       <PromoEditorialSection />

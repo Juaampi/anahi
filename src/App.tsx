@@ -14,6 +14,7 @@ import { AdminDashboardPage } from './pages/admin-dashboard-page'
 import { NotFoundPage } from './pages/not-found-page'
 import { QueryProvider } from './providers/query-provider'
 import { useCartStore } from './store/cart-store'
+import { useTheme } from './hooks/use-theme'
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -27,13 +28,15 @@ function ScrollToTop() {
 
 function Shell() {
   const hydrate = useCartStore((state) => state.hydrate)
+  const { theme, setTheme } = useTheme()
+
   useEffect(() => hydrate(), [hydrate])
 
   return (
     <BrowserRouter>
       <ScrollToTop />
       <div className="min-h-screen bg-[var(--color-surface)] text-[var(--color-text)]">
-        <Header />
+        <Header theme={theme} onThemeChange={setTheme} />
         <main>
           <Routes>
             <Route path="/" element={<HomePage />} />

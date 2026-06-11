@@ -58,8 +58,8 @@ export function CatalogPage() {
           <p className="mt-3 text-sm text-[var(--color-muted)]">{totalLabel}</p>
         </div>
 
-        <div className="grid items-start gap-5 lg:grid-cols-[340px,minmax(0,1fr)] xl:grid-cols-[390px,minmax(0,1fr)]">
-          <div className="lg:sticky lg:top-28">
+        <div className="grid items-start gap-6 xl:grid-cols-[320px,minmax(0,1fr)]">
+          <div className="order-2 xl:order-1">
             <ProductFilters
               categories={categoryQuery.data || []}
               category={localFilters.category}
@@ -71,8 +71,8 @@ export function CatalogPage() {
             />
           </div>
 
-          <div className="min-w-0">
-            <label className="mb-5 flex items-center overflow-hidden rounded-[18px] border border-[var(--color-border)] bg-white shadow-[0_10px_24px_rgba(17,24,39,0.04)]">
+          <div className="order-1 min-w-0 xl:order-2">
+            <label className="mb-5 flex items-center overflow-hidden rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface-card)] shadow-[0_10px_24px_rgba(17,24,39,0.04)]">
               <input
                 value={localFilters.search}
                 onChange={(event) => handleChange('search', event.target.value)}
@@ -84,7 +84,7 @@ export function CatalogPage() {
               </span>
             </label>
 
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
               {productQuery.data?.map((product) => <ProductCard key={product.id} product={product} />)}
             </div>
           </div>

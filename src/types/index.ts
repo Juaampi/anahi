@@ -48,6 +48,7 @@ export interface CheckoutInput {
   postalCode: string
   notes?: string
   sendWhatsAppSummary?: boolean
+  couponCode?: string
   items: OrderItemInput[]
 }
 
@@ -56,7 +57,9 @@ export interface Order extends CheckoutInput {
   orderNumber: string
   status: 'pending' | 'paid' | 'packing' | 'shipped' | 'cancelled'
   subtotal: number
+  discountAmount: number
   total: number
+  couponId?: string | null
   createdAt: string
 }
 
@@ -80,4 +83,32 @@ export interface CatalogFilters {
   sort?: 'featured' | 'price-asc' | 'price-desc' | 'newest'
   minPrice?: number
   maxPrice?: number
+}
+
+export type ThemeMode = 'light' | 'dark'
+
+export type CouponType = 'percentage' | 'fixed'
+
+export interface DiscountCoupon {
+  id: string
+  code: string
+  description: string
+  type: CouponType
+  value: number
+  minSubtotal?: number | null
+  active: boolean
+  startsAt?: string | null
+  endsAt?: string | null
+  usageLimit?: number | null
+  usageCount: number
+  createdAt?: string
+}
+
+export interface CouponValidation {
+  valid: boolean
+  message?: string
+  coupon?: DiscountCoupon
+  subtotal: number
+  discountAmount: number
+  total: number
 }

@@ -44,9 +44,27 @@ CREATE TABLE IF NOT EXISTS orders (
   postal_code TEXT NOT NULL,
   notes TEXT,
   send_whatsapp_summary BOOLEAN NOT NULL DEFAULT FALSE,
+  coupon_id TEXT,
+  coupon_code TEXT,
   subtotal NUMERIC(12,2) NOT NULL,
+  discount_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
   total NUMERIC(12,2) NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS discount_coupons (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  description TEXT NOT NULL DEFAULT '',
+  type TEXT NOT NULL,
+  value NUMERIC(12,2) NOT NULL,
+  min_subtotal NUMERIC(12,2),
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  starts_at TIMESTAMPTZ,
+  ends_at TIMESTAMPTZ,
+  usage_limit INTEGER,
+  usage_count INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

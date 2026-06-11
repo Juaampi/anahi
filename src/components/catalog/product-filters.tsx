@@ -17,9 +17,9 @@ export function ProductFilters(props: ProductFiltersProps) {
   const { categories, category, sort, minPrice, maxPrice, featuredOnly, onChange } = props
 
   return (
-    <aside className="space-y-5 rounded-[26px] border border-[var(--color-border)] bg-white p-6 text-[var(--color-primary)] shadow-[0_18px_38px_rgba(17,24,39,0.05)]">
+    <aside className="space-y-5 rounded-[26px] border border-[var(--color-border)] bg-[var(--color-surface-card)] p-6 text-[var(--color-primary)] shadow-[0_18px_38px_rgba(17,24,39,0.05)]">
       <div className="rounded-[22px] bg-[linear-gradient(135deg,#faf4ff_0%,#fff8fb_100%)] p-4">
-        <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[var(--color-primary)] shadow-sm">
+        <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-surface-card)] px-4 py-2 text-sm font-bold text-[var(--color-primary)] shadow-sm">
           <LayoutGrid size={16} className="text-[#b06cff]" />
           Todos los productos
         </span>
@@ -77,7 +77,7 @@ export function ProductFilters(props: ProductFiltersProps) {
           <select
             value={sort}
             onChange={(event) => onChange('sort', event.target.value)}
-            className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm text-[var(--color-primary)] outline-none"
+            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-card)] px-4 py-3 text-sm text-[var(--color-primary)] outline-none"
           >
             <option value="featured">Destacados</option>
             <option value="price-asc">Menor precio</option>
@@ -97,19 +97,19 @@ export function ProductFilters(props: ProductFiltersProps) {
               value={minPrice}
               onChange={(event) => onChange('minPrice', event.target.value)}
               placeholder="Min"
-              className="rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm text-[var(--color-primary)] outline-none placeholder:text-[var(--color-muted)]"
+              className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-card)] px-4 py-3 text-sm text-[var(--color-primary)] outline-none placeholder:text-[var(--color-muted)]"
             />
             <input
               type="number"
               value={maxPrice}
               onChange={(event) => onChange('maxPrice', event.target.value)}
               placeholder="Max"
-              className="rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm text-[var(--color-primary)] outline-none placeholder:text-[var(--color-muted)]"
+              className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-card)] px-4 py-3 text-sm text-[var(--color-primary)] outline-none placeholder:text-[var(--color-muted)]"
             />
           </div>
         </div>
 
-        <label className="flex items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm text-[var(--color-primary)]">
+        <label className="flex items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-card)] px-4 py-3 text-sm text-[var(--color-primary)]">
           <input
             type="checkbox"
             checked={featuredOnly}

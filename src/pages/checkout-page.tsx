@@ -2,8 +2,9 @@ import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useSEO } from '../hooks/use-seo'
 import { api } from '../lib/api'
-import { formatCurrency } from '../lib/utils'
+import { formatCurrency, normalizeCouponCode } from '../lib/utils'
 import { useCartStore } from '../store/cart-store'
+import type { CouponValidation } from '../types'
 
 export function CheckoutPage() {
   useSEO({ title: 'Checkout' })
@@ -18,8 +19,12 @@ export function CheckoutPage() {
     postalCode: '',
     notes: '',
     sendWhatsAppSummary: true,
+    couponCode: '',
   })
   const [orderFeedback, setOrderFeedback] = useState('')
+  const [couponFeedback, setCouponFeedback] = useState('')
+  const [couponResult, setCouponResult] = useState<CouponValidation | null>(null)
+
   const subtotal = useMemo(
     () => items.reduce((acc, item) => acc + item.product.price * item.quantity, 0),
     [items],
@@ -27,6 +32,7 @@ export function CheckoutPage() {
 
   const payload = {
     ...form,
+    couponCode: couponResult?.valid ? couponResult.coupon?.code : undefined,
     items: items.map((item) => ({
       productId: item.product.id,
       productName: item.product.name,
@@ -43,6 +49,9 @@ export function CheckoutPage() {
         window.open(result.whatsappUrl, '_blank', 'noopener,noreferrer')
       }
     },
+    onError: (error) => {
+      setOrderFeedback(error instanceof Error ? error.message : 'No se pudo generar el pedido.')
+    },
   })
 
   const preferenceMutation = useMutation({
@@ -55,7 +64,28 @@ export function CheckoutPage() {
         setOrderFeedback('Preferencia generada. Configura el access token de Mercado Pago para redirigir al checkout.')
       }
     },
+    onError: (error) => {
+      setOrderFeedback(error instanceof Error ? error.message : 'No se pudo generar la preferencia.')
+    },
   })
+
+  const couponMutation = useMutation({
+    mutationFn: () => api.validateCoupon(normalizeCouponCode(form.couponCode), subtotal),
+    onSuccess: (result) => {
+      setCouponResult(result.valid ? result : null)
+      setCouponFeedback(result.message || (result.valid ? 'Cupon aplicado.' : 'No se pudo aplicar el cupon.'))
+      if (result.valid && result.coupon?.code) {
+        setForm((current) => ({ ...current, couponCode: result.coupon!.code }))
+      }
+    },
+    onError: (error) => {
+      setCouponResult(null)
+      setCouponFeedback(error instanceof Error ? error.message : 'No se pudo validar el cupon.')
+    },
+  })
+
+  const discountAmount = couponResult?.valid ? couponResult.discountAmount : 0
+  const total = couponResult?.valid ? couponResult.total : subtotal
 
   return (
     <section className="bg-transparent py-12">
@@ -95,6 +125,36 @@ export function CheckoutPage() {
                 </label>
               ))}
               <label className="md:col-span-2">
+                <span className="mb-2 block text-sm font-medium text-[var(--color-primary)]">Cupon de descuento</span>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <input
+                    value={form.couponCode}
+                    onChange={(event) => {
+                      const nextCode = normalizeCouponCode(event.target.value)
+                      setForm((current) => ({ ...current, couponCode: nextCode }))
+                      if (couponResult?.coupon?.code !== nextCode) {
+                        setCouponResult(null)
+                      }
+                    }}
+                    placeholder="Ej: BIENVENIDA10"
+                    className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm uppercase text-[var(--color-primary)] outline-none"
+                  />
+                  <button
+                    type="button"
+                    disabled={!form.couponCode || couponMutation.isPending || items.length === 0}
+                    onClick={() => couponMutation.mutate()}
+                    className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 text-sm font-semibold text-[var(--color-primary)]"
+                  >
+                    {couponMutation.isPending ? 'Validando...' : 'Aplicar'}
+                  </button>
+                </div>
+                {couponFeedback ? (
+                  <p className={`mt-2 text-sm ${couponResult?.valid ? 'text-emerald-700' : 'text-rose-500'}`}>
+                    {couponFeedback}
+                  </p>
+                ) : null}
+              </label>
+              <label className="md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-[var(--color-primary)]">Notas del pedido</span>
                 <textarea
                   value={form.notes}
@@ -124,7 +184,7 @@ export function CheckoutPage() {
                 type="button"
                 disabled={preferenceMutation.isPending || items.length === 0}
                 onClick={() => preferenceMutation.mutate()}
-                className="inline-flex justify-center rounded-full bg-[var(--color-primary)] px-5 py-4 text-sm font-semibold !text-white"
+                className="btn-primary inline-flex justify-center rounded-full px-5 py-4 text-sm font-semibold"
               >
                 Pagar con Mercado Pago
               </button>
@@ -148,9 +208,15 @@ export function CheckoutPage() {
                 <span>Subtotal</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
+              {discountAmount > 0 ? (
+                <div className="mt-3 flex items-center justify-between text-sm text-emerald-700">
+                  <span>Descuento</span>
+                  <span>-{formatCurrency(discountAmount)}</span>
+                </div>
+              ) : null}
               <div className="mt-4 flex items-center justify-between font-display text-lg font-semibold text-[var(--color-primary)]">
                 <span>Total</span>
-                <span>{formatCurrency(subtotal)}</span>
+                <span>{formatCurrency(total)}</span>
               </div>
             </div>
           </aside>

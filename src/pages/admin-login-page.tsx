@@ -42,7 +42,11 @@ export function AdminLoginPage() {
             <button className="w-full rounded-full bg-[var(--color-primary)] px-5 py-4 text-sm font-semibold text-white">
               {mutation.isPending ? 'Ingresando...' : 'Entrar al panel'}
             </button>
-            {mutation.isError ? <p className="text-sm text-rose-300">No se pudo iniciar sesion.</p> : null}
+            {mutation.isError ? (
+              <p className="text-sm text-rose-300">
+                {mutation.error instanceof Error ? mutation.error.message : 'No se pudo iniciar sesion.'}
+              </p>
+            ) : null}
           </form>
         </div>
       </div>

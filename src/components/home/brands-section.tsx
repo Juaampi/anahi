@@ -19,10 +19,13 @@ export function BrandsSection() {
           {brandItems.map((brand) => (
             <div
               key={brand}
-              className="relative overflow-hidden rounded-[24px] border border-[var(--color-border)] bg-white px-6 py-8 text-center text-lg font-semibold text-[var(--color-primary)] shadow-[0_14px_30px_rgba(17,24,39,0.04)]"
+              className="group relative overflow-hidden rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface-card)] px-6 py-8 text-center text-lg font-semibold text-[var(--color-primary)] shadow-[0_14px_30px_rgba(17,24,39,0.04)]"
             >
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(255,244,239,0.9)),url('https://images.unsplash.com/photo-1515688594390-b649af70d282?auto=format&fit=crop&w=900&q=80')] bg-cover bg-center opacity-95" />
-              <span className="relative font-display">{brand}</span>
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(255,244,239,0.86)),url('https://images.unsplash.com/photo-1515688594390-b649af70d282?auto=format&fit=crop&w=900&q=80')] bg-cover bg-center opacity-95 transition duration-300 group-hover:scale-105" />
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,24,39,0.04),rgba(17,24,39,0.18))]" />
+              <span className="relative font-display text-[var(--color-primary)] drop-shadow-[0_2px_10px_rgba(255,255,255,0.45)]">
+                {brand}
+              </span>
             </div>
           ))}
         </div>
@@ -35,7 +38,7 @@ export function BrandsSection() {
         <div className="mt-8 text-center">
           <a
             href="/productos"
-            className="inline-flex rounded-full border border-[var(--color-border)] bg-white px-5 py-3 text-sm font-semibold text-[var(--color-primary)]"
+            className="inline-flex rounded-full border border-[var(--color-border)] bg-[var(--color-surface-card)] px-5 py-3 text-sm font-semibold text-[var(--color-primary)]"
           >
             Ver productos
           </a>

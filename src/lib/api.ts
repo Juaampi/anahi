@@ -2,6 +2,8 @@ import type {
   AdminUser,
   Category,
   CheckoutInput,
+  CouponValidation,
+  DiscountCoupon,
   Order,
   Product,
   StorefrontPayload,
@@ -20,8 +22,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'No se pudo completar la solicitud.')
+    const rawMessage = await response.text()
+    try {
+      const parsed = JSON.parse(rawMessage) as { message?: string }
+      throw new Error(parsed.message || 'No se pudo completar la solicitud.')
+    } catch {
+      throw new Error(rawMessage || 'No se pudo completar la solicitud.')
+    }
   }
 
   return response.json() as Promise<T>
@@ -148,6 +155,32 @@ export const api = {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status }),
+    }),
+  adminCoupons: (token: string) =>
+    request<DiscountCoupon[]>('/admin/coupons', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  saveCoupon: (token: string, coupon: Partial<DiscountCoupon>) =>
+    request<DiscountCoupon>('/admin/coupons', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(coupon),
+    }),
+  updateCoupon: (token: string, id: string, coupon: Partial<DiscountCoupon>) =>
+    request<DiscountCoupon>(`/admin/coupons/${id}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(coupon),
+    }),
+  deleteCoupon: (token: string, id: string) =>
+    request<{ success: true }>(`/admin/coupons/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  validateCoupon: (couponCode: string, subtotal: number) =>
+    request<CouponValidation>('/coupons/validate', {
+      method: 'POST',
+      body: JSON.stringify({ couponCode, subtotal }),
     }),
   createOrder: (payload: CheckoutInput) =>
     request<{ order: Order; whatsappUrl?: string }>('/orders', {

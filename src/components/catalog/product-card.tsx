@@ -18,7 +18,7 @@ export function ProductCard({ product }: { product: Product }) {
   const hasDiscount = Boolean(product.compareAtPrice && product.compareAtPrice > product.price)
 
   return (
-    <article className="overflow-hidden rounded-[24px] border border-[var(--color-border)] bg-white p-4 shadow-[0_10px_24px_rgba(17,24,39,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(17,24,39,0.09)]">
+    <article className="overflow-hidden rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface-card)] p-4 shadow-[0_10px_24px_rgba(17,24,39,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(17,24,39,0.09)]">
       <Link to={`/productos/${product.slug}`} className="block">
         <div className="relative rounded-[20px] bg-[linear-gradient(180deg,#ffffff_0%,#fff7f4_100%)] px-4 pb-4 pt-12">
           {firstBadge ? (
@@ -77,14 +77,14 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="mt-5 flex gap-2">
           <Link
             to={`/productos/${product.slug}`}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-[var(--color-border)] bg-[#fbf6f4] px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-card)] px-4 py-3 text-sm font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
           >
             <Search size={15} />
             Ver producto
           </Link>
           <button
             onClick={() => addItem(product)}
-            className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)] !text-white shadow-[0_10px_24px_rgba(17,24,39,0.14)] transition hover:bg-[var(--color-accent)]"
+            className="btn-primary inline-flex h-12 w-12 items-center justify-center rounded-full shadow-[0_10px_24px_rgba(17,24,39,0.14)] transition"
             aria-label={`Agregar ${product.name}`}
           >
             <ShoppingBag size={17} />

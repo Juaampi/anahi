@@ -31,7 +31,7 @@ export function FeaturedGrid({
         <div className="mt-8 text-center">
           <Link
             to="/productos"
-            className="inline-flex rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold !text-white shadow-[0_14px_30px_rgba(17,24,39,0.14)]"
+            className="btn-primary inline-flex rounded-full px-5 py-3 text-sm font-semibold shadow-[0_14px_30px_rgba(17,24,39,0.14)]"
           >
             Ver más productos
           </Link>

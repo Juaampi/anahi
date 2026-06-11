@@ -8,7 +8,7 @@ export function BenefitsSection() {
           ['3 cuotas', 'sin interés'],
           ['Envios', 'a todo el país'],
         ].map(([title, subtitle]) => (
-          <article key={title} className="bg-white px-5 py-5 text-center">
+          <article key={title} className="bg-[var(--color-surface-card)] px-5 py-5 text-center">
             <strong className="font-display block text-lg font-semibold text-[var(--color-primary)]">{title}</strong>
             <span className="text-sm text-[var(--color-muted)]">{subtitle}</span>
           </article>

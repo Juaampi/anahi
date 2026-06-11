@@ -35,7 +35,7 @@ export function HeroSection() {
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Link
                   to="/productos"
-                  className="inline-flex items-center justify-center rounded-full bg-[var(--color-primary)] px-6 py-4 text-sm font-semibold !text-white shadow-[0_14px_30px_rgba(17,24,39,0.14)]"
+                  className="btn-primary inline-flex items-center justify-center rounded-full px-6 py-4 text-sm font-semibold shadow-[0_14px_30px_rgba(17,24,39,0.14)]"
                 >
                   Comprar productos
                 </Link>

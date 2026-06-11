@@ -222,7 +222,7 @@ export function CartPage() {
             </div>
             <Link
               to="/checkout"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-[var(--color-primary)] px-5 py-4 text-sm font-semibold !text-white"
+              className="btn-primary mt-6 inline-flex w-full items-center justify-center rounded-full px-5 py-4 text-sm font-semibold"
             >
               Finalizar compra
             </Link>

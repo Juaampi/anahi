@@ -27,3 +27,7 @@ export function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
 }
+
+export function normalizeCouponCode(value: string) {
+  return value.trim().toUpperCase()
+}

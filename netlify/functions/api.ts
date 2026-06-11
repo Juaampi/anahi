@@ -21,6 +21,19 @@ type ProductInput = {
   categoryId?: string
 }
 
+type CouponInput = {
+  id?: string
+  code?: string
+  description?: string
+  type?: 'percentage' | 'fixed'
+  value?: number
+  minSubtotal?: number | null
+  active?: boolean
+  startsAt?: string | null
+  endsAt?: string | null
+  usageLimit?: number | null
+}
+
 type DataRow = Record<string, unknown>
 type OrderPayload = {
   customerName: string
@@ -32,6 +45,7 @@ type OrderPayload = {
   postalCode: string
   notes?: string
   sendWhatsAppSummary?: boolean
+  couponCode?: string
   items: Array<{ productId: string; productName?: string; quantity: number; unitPrice: number }>
 }
 
@@ -53,6 +67,14 @@ function createId(prefix: string) {
 
 function createOrderNumber() {
   return `AND-${Date.now().toString().slice(-8)}`
+}
+
+function normalizeCouponCode(code?: string) {
+  return (code || '').trim().toUpperCase()
+}
+
+function roundMoney(value: number) {
+  return Math.max(0, Math.round(value * 100) / 100)
 }
 
 function getToken(event: Parameters<Handler>[0]) {
@@ -91,10 +113,42 @@ function normalizeProduct(row: DataRow) {
   }
 }
 
+function normalizeCoupon(row: DataRow) {
+  return {
+    id: row.id,
+    code: row.code,
+    description: row.description ?? '',
+    type: row.type,
+    value: Number(row.value),
+    minSubtotal: row.min_subtotal === null ? null : Number(row.min_subtotal ?? row.minSubtotal ?? 0),
+    active: Boolean(row.active),
+    startsAt: (row.starts_at ?? row.startsAt ?? null) as string | null,
+    endsAt: (row.ends_at ?? row.endsAt ?? null) as string | null,
+    usageLimit: row.usage_limit === null ? null : Number(row.usage_limit ?? row.usageLimit ?? 0),
+    usageCount: Number(row.usage_count ?? row.usageCount ?? 0),
+    createdAt: row.created_at ?? row.createdAt,
+  }
+}
+
+function sortProducts(items: Array<Record<string, unknown> & { price: number; featured: boolean }>, sort: string) {
+  const clone = [...items]
+  if (sort === 'price-asc') return clone.sort((a, b) => a.price - b.price)
+  if (sort === 'price-desc') return clone.sort((a, b) => b.price - a.price)
+  if (sort === 'newest') return clone.reverse()
+  return clone.sort((a, b) => Number(b.featured) - Number(a.featured))
+}
+
 async function listCategories() {
   const sql = await ensureDatabase()
   if (!sql) return getMemoryState().categories
   return sql.query('SELECT id, slug, name, description, image_url FROM categories ORDER BY name ASC')
+}
+
+async function listCoupons() {
+  const sql = await ensureDatabase()
+  if (!sql) return getMemoryState().coupons.map(normalizeCoupon)
+  const rows = await sql.query('SELECT * FROM discount_coupons ORDER BY created_at DESC, code ASC')
+  return rows.map(normalizeCoupon)
 }
 
 async function listProducts(searchParams: URLSearchParams) {
@@ -131,9 +185,7 @@ async function listProducts(searchParams: URLSearchParams) {
     params.push(`%${q}%`)
     query += ` AND LOWER(p.name) LIKE $${params.length}`
   }
-  if (featured === 'true') {
-    query += ' AND p.featured = TRUE'
-  }
+  if (featured === 'true') query += ' AND p.featured = TRUE'
   if (minPrice) {
     params.push(minPrice)
     query += ` AND p.price >= $${params.length}`
@@ -156,21 +208,9 @@ async function listProducts(searchParams: URLSearchParams) {
   return rows.map(normalizeProduct)
 }
 
-function sortProducts(items: Array<Record<string, unknown> & { price: number; featured: boolean }>, sort: string) {
-  const clone = [...items]
-  if (sort === 'price-asc') return clone.sort((a, b) => a.price - b.price)
-  if (sort === 'price-desc') return clone.sort((a, b) => b.price - a.price)
-  if (sort === 'newest') return clone.reverse()
-  return clone.sort((a, b) => Number(b.featured) - Number(a.featured))
-}
-
 async function getProductBySlug(slug: string) {
   const sql = await ensureDatabase()
-  if (!sql) {
-    const product = getMemoryState().products.find((item) => item.slug === slug)
-    if (!product) return null
-    return product
-  }
+  if (!sql) return getMemoryState().products.find((item) => item.slug === slug) || null
 
   const rows = await sql.query(
     `SELECT p.*, c.name AS category_name
@@ -264,8 +304,7 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
 async function deleteProduct(id: string) {
   const sql = await ensureDatabase()
   if (!sql) {
-    const state = getMemoryState()
-    state.products = state.products.filter((item) => item.id !== id)
+    getMemoryState().products = getMemoryState().products.filter((item) => item.id !== id)
     return
   }
   await sql.query('DELETE FROM products WHERE id = $1', [id])
@@ -316,35 +355,222 @@ async function createOrUpdateCategory(
 async function deleteCategory(id: string) {
   const sql = await ensureDatabase()
   if (!sql) {
-    const state = getMemoryState()
-    state.categories = state.categories.filter((item) => item.id !== id)
+    getMemoryState().categories = getMemoryState().categories.filter((item) => item.id !== id)
     return
   }
   await sql.query('DELETE FROM categories WHERE id = $1', [id])
 }
 
+async function createOrUpdateCoupon(input: CouponInput, id?: string) {
+  const sql = await ensureDatabase()
+  const payload = {
+    id: id || createId('coupon'),
+    code: normalizeCouponCode(input.code),
+    description: input.description || '',
+    type: input.type === 'fixed' ? 'fixed' : 'percentage',
+    value: Number(input.value || 0),
+    minSubtotal: input.minSubtotal ? Number(input.minSubtotal) : null,
+    active: input.active ?? true,
+    startsAt: input.startsAt || null,
+    endsAt: input.endsAt || null,
+    usageLimit: input.usageLimit ? Number(input.usageLimit) : null,
+  }
+
+  if (!sql) {
+    const state = getMemoryState()
+    const existing = state.coupons.find((item) => item.id === payload.id)
+    const coupon = {
+      ...payload,
+      usageCount: existing ? Number(existing.usageCount || 0) : 0,
+      createdAt: (existing?.createdAt as string | undefined) || new Date().toISOString(),
+    }
+    if (existing) {
+      Object.assign(existing, coupon)
+      return normalizeCoupon(existing)
+    }
+    state.coupons.unshift(coupon)
+    return normalizeCoupon(coupon)
+  }
+
+  if (id) {
+    await sql.query(
+      `UPDATE discount_coupons
+       SET code = $1, description = $2, type = $3, value = $4, min_subtotal = $5, active = $6, starts_at = $7, ends_at = $8, usage_limit = $9
+       WHERE id = $10`,
+      [
+        payload.code,
+        payload.description,
+        payload.type,
+        payload.value,
+        payload.minSubtotal,
+        payload.active,
+        payload.startsAt,
+        payload.endsAt,
+        payload.usageLimit,
+        id,
+      ],
+    )
+    const rows = await sql.query('SELECT * FROM discount_coupons WHERE id = $1', [id])
+    return normalizeCoupon(rows[0])
+  }
+
+  await sql.query(
+    `INSERT INTO discount_coupons
+      (id, code, description, type, value, min_subtotal, active, starts_at, ends_at, usage_limit)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [
+      payload.id,
+      payload.code,
+      payload.description,
+      payload.type,
+      payload.value,
+      payload.minSubtotal,
+      payload.active,
+      payload.startsAt,
+      payload.endsAt,
+      payload.usageLimit,
+    ],
+  )
+  const rows = await sql.query('SELECT * FROM discount_coupons WHERE id = $1', [payload.id])
+  return normalizeCoupon(rows[0])
+}
+
+async function deleteCoupon(id: string) {
+  const sql = await ensureDatabase()
+  if (!sql) {
+    getMemoryState().coupons = getMemoryState().coupons.filter((item) => item.id !== id)
+    return
+  }
+  await sql.query('DELETE FROM discount_coupons WHERE id = $1', [id])
+}
+
+async function findCouponByCode(code?: string) {
+  const normalizedCode = normalizeCouponCode(code)
+  if (!normalizedCode) return null
+  const sql = await ensureDatabase()
+  if (!sql) {
+    const found = getMemoryState().coupons.find((item) => String(item.code || '').toUpperCase() === normalizedCode)
+    return found ? normalizeCoupon(found) : null
+  }
+  const rows = await sql.query('SELECT * FROM discount_coupons WHERE UPPER(code) = $1 LIMIT 1', [normalizedCode])
+  return rows[0] ? normalizeCoupon(rows[0]) : null
+}
+
+async function incrementCouponUsage(couponId: string) {
+  const sql = await ensureDatabase()
+  if (!sql) {
+    const coupon = getMemoryState().coupons.find((item) => item.id === couponId)
+    if (coupon) coupon.usageCount = Number(coupon.usageCount || 0) + 1
+    return
+  }
+  await sql.query('UPDATE discount_coupons SET usage_count = usage_count + 1 WHERE id = $1', [couponId])
+}
+
+async function validateCoupon(code: string | undefined, subtotal: number) {
+  const normalizedCode = normalizeCouponCode(code)
+  if (!normalizedCode) {
+    return { valid: false, message: 'Ingresa un cupon.', subtotal, discountAmount: 0, total: subtotal }
+  }
+
+  const coupon = await findCouponByCode(normalizedCode)
+  if (!coupon) {
+    return { valid: false, message: 'Cupon no encontrado.', subtotal, discountAmount: 0, total: subtotal }
+  }
+  if (!coupon.active) {
+    return { valid: false, message: 'Cupon inactivo.', subtotal, discountAmount: 0, total: subtotal }
+  }
+
+  const now = Date.now()
+  if (coupon.startsAt && new Date(coupon.startsAt).getTime() > now) {
+    return { valid: false, message: 'Cupon todavia no disponible.', subtotal, discountAmount: 0, total: subtotal }
+  }
+  if (coupon.endsAt && new Date(coupon.endsAt).getTime() < now) {
+    return { valid: false, message: 'Cupon vencido.', subtotal, discountAmount: 0, total: subtotal }
+  }
+  if (coupon.minSubtotal && subtotal < coupon.minSubtotal) {
+    return {
+      valid: false,
+      message: `Compra minima ${coupon.minSubtotal}.`,
+      subtotal,
+      discountAmount: 0,
+      total: subtotal,
+    }
+  }
+  if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
+    return { valid: false, message: 'Cupon sin usos disponibles.', subtotal, discountAmount: 0, total: subtotal }
+  }
+
+  const rawDiscount = coupon.type === 'percentage' ? subtotal * (coupon.value / 100) : coupon.value
+  const discountAmount = roundMoney(Math.min(subtotal, rawDiscount))
+
+  return {
+    valid: true,
+    message: 'Cupon aplicado.',
+    coupon,
+    subtotal,
+    discountAmount,
+    total: roundMoney(subtotal - discountAmount),
+  }
+}
+
+function buildPreferenceItems(
+  items: OrderPayload['items'],
+  subtotal: number,
+  discountAmount: number,
+) {
+  if (!discountAmount || subtotal <= 0) {
+    return items.map((item) => ({ ...item, unitPrice: roundMoney(item.unitPrice) }))
+  }
+
+  let discountLeft = discountAmount
+  return items.map((item, index) => {
+    const lineSubtotal = item.unitPrice * item.quantity
+    const lineDiscount =
+      index === items.length - 1 ? discountLeft : roundMoney((lineSubtotal / subtotal) * discountAmount)
+    discountLeft = roundMoney(discountLeft - lineDiscount)
+    return {
+      ...item,
+      unitPrice: roundMoney(Math.max(0, lineSubtotal - lineDiscount) / item.quantity),
+    }
+  })
+}
+
 async function createOrder(body: OrderPayload) {
   const sql = await ensureDatabase()
-  const subtotal = body.items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0)
+  const subtotal = roundMoney(body.items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0))
+  const couponValidation = body.couponCode
+    ? await validateCoupon(body.couponCode, subtotal)
+    : { valid: false, subtotal, discountAmount: 0, total: subtotal }
+
+  if (body.couponCode && !couponValidation.valid) {
+    throw new Error(couponValidation.message || 'No se pudo aplicar el cupon.')
+  }
+
   const order = {
     id: createId('order'),
     orderNumber: createOrderNumber(),
     ...body,
+    couponCode: couponValidation.valid ? couponValidation.coupon?.code : undefined,
+    couponId: couponValidation.valid ? couponValidation.coupon?.id : undefined,
     status: 'pending',
     subtotal,
-    total: subtotal,
+    discountAmount: couponValidation.discountAmount,
+    total: couponValidation.total,
     createdAt: new Date().toISOString(),
   }
 
   if (!sql) {
     getMemoryState().orders.unshift(order)
+    if (couponValidation.valid && couponValidation.coupon?.id) {
+      await incrementCouponUsage(couponValidation.coupon.id)
+    }
     return order
   }
 
   await sql.query(
     `INSERT INTO orders
-      (id, order_number, customer_name, email, phone, address, city, province, postal_code, notes, send_whatsapp_summary, subtotal, total, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      (id, order_number, customer_name, email, phone, address, city, province, postal_code, notes, send_whatsapp_summary, coupon_id, coupon_code, subtotal, discount_amount, total, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
     [
       order.id,
       order.orderNumber,
@@ -357,7 +583,10 @@ async function createOrder(body: OrderPayload) {
       order.postalCode,
       order.notes || '',
       Boolean(order.sendWhatsAppSummary),
+      order.couponId || null,
+      order.couponCode || null,
       order.subtotal,
+      order.discountAmount,
       order.total,
       order.status,
     ],
@@ -370,6 +599,10 @@ async function createOrder(body: OrderPayload) {
     )
   }
 
+  if (couponValidation.valid && couponValidation.coupon?.id) {
+    await incrementCouponUsage(couponValidation.coupon.id)
+  }
+
   return order
 }
 
@@ -378,7 +611,7 @@ async function listOrders() {
   if (!sql) return getMemoryState().orders
   const rows = await sql.query(
     `SELECT id, order_number, customer_name, email, phone, address, city, province, postal_code, notes,
-            send_whatsapp_summary, subtotal, total, status, created_at
+            send_whatsapp_summary, coupon_id, coupon_code, subtotal, discount_amount, total, status, created_at
      FROM orders
      ORDER BY created_at DESC`,
   )
@@ -394,7 +627,10 @@ async function listOrders() {
     postalCode: row.postal_code,
     notes: row.notes,
     sendWhatsAppSummary: row.send_whatsapp_summary,
+    couponId: row.coupon_id,
+    couponCode: row.coupon_code,
     subtotal: Number(row.subtotal),
+    discountAmount: Number(row.discount_amount || 0),
     total: Number(row.total),
     status: row.status,
     createdAt: row.created_at,
@@ -411,7 +647,7 @@ async function updateOrderStatus(id: string, status: string) {
   }
   await sql.query('UPDATE orders SET status = $1 WHERE id = $2', [status, id])
   const rows = await sql.query(
-    'SELECT id, order_number, customer_name, email, phone, address, city, province, postal_code, notes, send_whatsapp_summary, subtotal, total, status, created_at FROM orders WHERE id = $1',
+    'SELECT id, order_number, customer_name, email, phone, address, city, province, postal_code, notes, send_whatsapp_summary, coupon_id, coupon_code, subtotal, discount_amount, total, status, created_at FROM orders WHERE id = $1',
     [id],
   )
   const row = rows[0]
@@ -427,7 +663,10 @@ async function updateOrderStatus(id: string, status: string) {
     postalCode: row.postal_code,
     notes: row.notes,
     sendWhatsAppSummary: row.send_whatsapp_summary,
+    couponId: row.coupon_id,
+    couponCode: row.coupon_code,
     subtotal: Number(row.subtotal),
+    discountAmount: Number(row.discount_amount || 0),
     total: Number(row.total),
     status: row.status,
     createdAt: row.created_at,
@@ -435,6 +674,15 @@ async function updateOrderStatus(id: string, status: string) {
 }
 
 async function generateMercadoPagoPreference(body: OrderPayload) {
+  const subtotal = roundMoney(body.items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0))
+  const couponValidation = body.couponCode
+    ? await validateCoupon(body.couponCode, subtotal)
+    : { valid: false, subtotal, discountAmount: 0, total: subtotal }
+
+  if (body.couponCode && !couponValidation.valid) {
+    throw new Error(couponValidation.message || 'No se pudo aplicar el cupon.')
+  }
+
   if (!process.env.MERCADOPAGO_ACCESS_TOKEN) {
     return { preferenceId: 'pending-config', initPoint: '', sandboxInitPoint: '' }
   }
@@ -444,10 +692,11 @@ async function generateMercadoPagoPreference(body: OrderPayload) {
     options: { timeout: 5000 },
   })
   const preference = new Preference(client)
+  const pricedItems = buildPreferenceItems(body.items, subtotal, couponValidation.discountAmount)
 
   const result = await preference.create({
     body: {
-      items: body.items.map((item, index) => ({
+      items: pricedItems.map((item, index) => ({
         id: item.productId || `item-${index}`,
         title: item.productName || `Producto ${index + 1}`,
         quantity: item.quantity,
@@ -514,9 +763,10 @@ export const handler: Handler = async (event) => {
 
     if (method === 'POST' && path === '/admin/login') {
       const body = parseBody<{ email: string; password: string }>(event.body)
+      const normalizedEmail = body.email.trim().toLowerCase()
       const sql = await ensureDatabase()
       const user = sql
-        ? (await sql.query('SELECT id, name, email, password_hash FROM users_admin WHERE email = $1', [body.email]))[0]
+        ? (await sql.query('SELECT id, name, email, password_hash FROM users_admin WHERE LOWER(email) = $1', [normalizedEmail]))[0]
         : await getMemoryAdmin()
       if (!user) return json(401, { message: 'Credenciales invalidas.' })
       const isValid = await verifyPassword(body.password, user.password_hash || user.passwordHash)
@@ -533,12 +783,10 @@ export const handler: Handler = async (event) => {
       return json(200, await listProducts(new URLSearchParams('sort=featured')))
     }
     if (method === 'POST' && path === '/admin/products') {
-      const body = parseBody<ProductInput>(event.body)
-      return json(200, await createOrUpdateProduct(body))
+      return json(200, await createOrUpdateProduct(parseBody(event.body)))
     }
     if (method === 'PUT' && path.startsWith('/admin/products/')) {
-      const body = parseBody<ProductInput>(event.body)
-      return json(200, await createOrUpdateProduct(body, path.split('/').pop() || ''))
+      return json(200, await createOrUpdateProduct(parseBody(event.body), path.split('/').pop() || ''))
     }
     if (method === 'DELETE' && path.startsWith('/admin/products/')) {
       await deleteProduct(path.split('/').pop() || '')
@@ -564,8 +812,26 @@ export const handler: Handler = async (event) => {
     }
     if (method === 'PUT' && path.match(/^\/admin\/orders\/[^/]+\/status$/)) {
       const body = parseBody<{ status: string }>(event.body)
-      const orderId = path.split('/')[3]
-      return json(200, await updateOrderStatus(orderId, body.status))
+      return json(200, await updateOrderStatus(path.split('/')[3], body.status))
+    }
+
+    if (method === 'GET' && path === '/admin/coupons') {
+      return json(200, await listCoupons())
+    }
+    if (method === 'POST' && path === '/admin/coupons') {
+      return json(200, await createOrUpdateCoupon(parseBody(event.body)))
+    }
+    if (method === 'PUT' && path.startsWith('/admin/coupons/')) {
+      return json(200, await createOrUpdateCoupon(parseBody(event.body), path.split('/').pop() || ''))
+    }
+    if (method === 'DELETE' && path.startsWith('/admin/coupons/')) {
+      await deleteCoupon(path.split('/').pop() || '')
+      return json(200, { success: true })
+    }
+
+    if (method === 'POST' && path === '/coupons/validate') {
+      const body = parseBody<{ couponCode?: string; subtotal?: number }>(event.body)
+      return json(200, await validateCoupon(body.couponCode, Number(body.subtotal || 0)))
     }
 
     if (method === 'POST' && path === '/orders') {
