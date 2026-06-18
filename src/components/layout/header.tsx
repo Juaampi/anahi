@@ -1,8 +1,8 @@
 import { Menu, ShoppingBag } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
-import { navLinks } from '../../lib/constants'
-import { cn } from '../../lib/utils'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { brandConfigs, storeSites } from '../../lib/constants'
+import { buildStorePath, cn } from '../../lib/utils'
 import { useCartStore } from '../../store/cart-store'
 import type { ThemeMode } from '../../types'
 import { ThemeToggle } from './theme-toggle'
@@ -14,11 +14,19 @@ type HeaderProps = {
 
 export function Header({ theme, onThemeChange }: HeaderProps) {
   const [open, setOpen] = useState(false)
+  const location = useLocation()
   const items = useCartStore((state) => state.items)
+  const currentSite = storeSites.find((site) => location.pathname.startsWith(`/${site}`)) || 'anahinails'
+  const brand = brandConfigs[currentSite]
   const cartCount = useMemo(
     () => items.reduce((acc, item) => acc + item.quantity, 0),
     [items],
   )
+  const navLinks = [
+    { label: 'Inicio', to: buildStorePath(currentSite) },
+    { label: 'Todos los productos', to: buildStorePath(currentSite, '/productos') },
+    { label: 'Nuevos ingresos', to: `${buildStorePath(currentSite, '/productos')}?sort=newest` },
+  ]
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface-card)_90%,transparent)] shadow-[0_10px_30px_rgba(17,24,39,0.06)] backdrop-blur">
@@ -31,35 +39,24 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
           <Menu size={20} />
         </button>
 
-        <Link to="/" className="flex min-w-0 flex-1 items-center gap-3 lg:flex-none">
+        <Link to={buildStorePath(currentSite)} className="flex min-w-0 flex-1 items-center gap-3 lg:flex-none">
           <img
-            src="/anahi-diamond-logo.png"
-            alt="Anahi Nails Diamond"
+            src={brand.logo}
+            alt={brand.name}
             className="h-14 w-14 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-card)] object-contain p-1 shadow-sm"
           />
           <div className="min-w-0">
             <p className="truncate font-display text-lg font-bold tracking-[0.03em] text-[var(--color-primary)]">
-              ANAHI NAILS DIAMOND
+              {brand.name.toUpperCase()}
             </p>
             <p className="truncate text-xs uppercase tracking-[0.25em] text-[var(--color-muted)]">
-              Beauty Supply
+              {brand.tagline}
             </p>
           </div>
         </Link>
 
         <nav className="hidden flex-1 items-center justify-center lg:flex">
           <div className="flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface-card)_88%,transparent)] px-2 py-2 shadow-[0_10px_24px_rgba(17,24,39,0.04)]">
-            <NavLink
-              to="/"
-              className={({ isActive }) =>
-                cn(
-                  'rounded-full px-4 py-2 text-sm font-medium text-[var(--color-muted)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-primary)]',
-                  isActive && 'btn-primary shadow-[0_10px_20px_rgba(17,24,39,0.14)]',
-                )
-              }
-            >
-              Inicio
-            </NavLink>
             {navLinks.map((link) => (
               <NavLink
                 key={link.to}
@@ -86,10 +83,10 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
             Iniciar sesión
           </Link>
           <Link
-            to="/productos"
+            to={buildStorePath(currentSite, '/productos')}
             className="btn-primary rounded-full px-5 py-2.5 text-sm font-semibold shadow-[0_12px_24px_rgba(17,24,39,0.14)] transition"
           >
-            Ver tienda
+            {brand.productLabel}
           </Link>
         </div>
 
@@ -109,19 +106,6 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
         <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)] px-4 pb-4 lg:hidden">
           <div className="mt-4 flex flex-col gap-3 rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface-card)] p-4 shadow-[0_12px_28px_rgba(17,24,39,0.05)]">
             <ThemeToggle value={theme} onChange={onThemeChange} mobile />
-            <NavLink
-              key="/"
-              to="/"
-              className={({ isActive }) =>
-                cn(
-                  'rounded-full px-4 py-3 text-sm font-medium text-[var(--color-primary)]',
-                  isActive && 'btn-primary',
-                )
-              }
-              onClick={() => setOpen(false)}
-            >
-              Inicio
-            </NavLink>
             {navLinks.map((link) => (
               <NavLink
                 key={link.to}
@@ -138,11 +122,11 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
               </NavLink>
             ))}
             <Link
-              to="/productos"
+              to={buildStorePath(currentSite, '/productos')}
               className="btn-primary rounded-full px-4 py-3 text-center text-sm font-semibold"
               onClick={() => setOpen(false)}
             >
-              Ver tienda
+              {brand.productLabel}
             </Link>
             <Link
               to="/admin"

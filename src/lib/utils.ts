@@ -31,3 +31,8 @@ export function slugify(value: string) {
 export function normalizeCouponCode(value: string) {
   return value.trim().toUpperCase()
 }
+
+export function buildStorePath(site: string, suffix = '') {
+  if (!suffix) return `/${site}`
+  return `/${site}${suffix.startsWith('/') ? suffix : `/${suffix}`}`
+}

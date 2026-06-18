@@ -3,7 +3,8 @@ import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { Footer } from './components/layout/footer'
 import { Header } from './components/layout/header'
 import { WhatsAppFab } from './components/layout/whatsapp-fab'
-import { HomePage } from './pages/home-page'
+import { Navigate } from 'react-router-dom'
+import { BrandHomePage } from './pages/brand-home-page'
 import { CatalogPage } from './pages/catalog-page'
 import { ProductPage } from './pages/product-page'
 import { CartPage } from './pages/cart-page'
@@ -15,6 +16,7 @@ import { NotFoundPage } from './pages/not-found-page'
 import { QueryProvider } from './providers/query-provider'
 import { useCartStore } from './store/cart-store'
 import { useTheme } from './hooks/use-theme'
+import { IntroSelectorPage } from './pages/intro-selector-page'
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -39,8 +41,14 @@ function Shell() {
         <Header theme={theme} onThemeChange={setTheme} />
         <main>
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/productos" element={<CatalogPage />} />
+            <Route path="/" element={<IntroSelectorPage />} />
+            <Route path="/anahinails" element={<BrandHomePage site="anahinails" />} />
+            <Route path="/anahinails/productos" element={<CatalogPage site="anahinails" />} />
+            <Route path="/anahinails/productos/:slug" element={<ProductPage site="anahinails" />} />
+            <Route path="/wildspirit" element={<BrandHomePage site="wildspirit" />} />
+            <Route path="/wildspirit/productos" element={<CatalogPage site="wildspirit" />} />
+            <Route path="/wildspirit/productos/:slug" element={<ProductPage site="wildspirit" />} />
+            <Route path="/productos" element={<Navigate to="/anahinails/productos" replace />} />
             <Route path="/productos/:slug" element={<ProductPage />} />
             <Route path="/carrito" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />

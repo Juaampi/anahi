@@ -6,6 +6,10 @@ import { getProductFallbackImage } from '../lib/constants'
 import { formatCurrency } from '../lib/utils'
 import { useCartStore } from '../store/cart-store'
 
+function getCartKey(productId: string, variantId?: string | null) {
+  return `${productId}::${variantId || 'base'}`
+}
+
 export function CartPage() {
   useSEO({ title: 'Carrito' })
   const { items, removeItem, updateQuantity } = useCartStore()
@@ -35,7 +39,7 @@ export function CartPage() {
                 <div className="space-y-4 md:hidden">
                   {items.map((item) => (
                     <article
-                      key={item.product.id}
+                      key={getCartKey(item.product.id, item.selectedVariant?.id)}
                       className="rounded-[2rem] border border-[var(--color-border)] bg-white p-4 shadow-[0_14px_30px_rgba(17,24,39,0.05)]"
                     >
                       <div className="flex items-start gap-4">
@@ -52,6 +56,11 @@ export function CartPage() {
                           <h2 className="font-display mt-2 text-base font-bold leading-6 text-[var(--color-primary)]">
                             {item.product.name}
                           </h2>
+                          {item.selectedVariant ? (
+                            <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                              Variante: {item.selectedVariant.name || item.selectedVariant.color}
+                            </p>
+                          ) : null}
                           <p className="mt-2 text-sm font-semibold text-[var(--color-primary)]">
                             {formatCurrency(item.product.price)}
                           </p>
@@ -64,7 +73,7 @@ export function CartPage() {
                           <div className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-white">
                             <button
                               type="button"
-                              onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                              onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.selectedVariant?.id)}
                               className="px-3 py-2 text-[var(--color-primary)]"
                               aria-label={`Disminuir cantidad de ${item.product.name}`}
                             >
@@ -75,7 +84,7 @@ export function CartPage() {
                             </span>
                             <button
                               type="button"
-                              onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                              onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.selectedVariant?.id)}
                               className="px-3 py-2 text-[var(--color-primary)]"
                               aria-label={`Aumentar cantidad de ${item.product.name}`}
                             >
@@ -93,7 +102,7 @@ export function CartPage() {
 
                         <button
                           type="button"
-                          onClick={() => removeItem(item.product.id)}
+                          onClick={() => removeItem(item.product.id, item.selectedVariant?.id)}
                           className="inline-flex items-center justify-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-100"
                         >
                           <Trash2 size={15} />
@@ -128,7 +137,7 @@ export function CartPage() {
                     </thead>
                     <tbody>
                       {items.map((item) => (
-                        <tr key={item.product.id} className="border-b border-[var(--color-border)] last:border-b-0">
+                        <tr key={getCartKey(item.product.id, item.selectedVariant?.id)} className="border-b border-[var(--color-border)] last:border-b-0">
                           <td className="px-6 py-5">
                             <div className="flex min-w-[260px] items-center gap-4">
                               <SmartImage
@@ -144,6 +153,11 @@ export function CartPage() {
                                 <h2 className="font-display mt-2 text-base font-bold leading-6 text-[var(--color-primary)]">
                                   {item.product.name}
                                 </h2>
+                                {item.selectedVariant ? (
+                                  <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                                    Variante: {item.selectedVariant.name || item.selectedVariant.color}
+                                  </p>
+                                ) : null}
                               </div>
                             </div>
                           </td>
@@ -156,7 +170,7 @@ export function CartPage() {
                             <div className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-[#fffaf8]">
                               <button
                                 type="button"
-                                onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                                onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.selectedVariant?.id)}
                                 className="px-3 py-2 text-[var(--color-primary)]"
                                 aria-label={`Disminuir cantidad de ${item.product.name}`}
                               >
@@ -167,7 +181,7 @@ export function CartPage() {
                               </span>
                               <button
                                 type="button"
-                                onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                                onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.selectedVariant?.id)}
                                 className="px-3 py-2 text-[var(--color-primary)]"
                                 aria-label={`Aumentar cantidad de ${item.product.name}`}
                               >
@@ -183,7 +197,7 @@ export function CartPage() {
                           <td className="px-6 py-5 align-middle">
                             <button
                               type="button"
-                              onClick={() => removeItem(item.product.id)}
+                              onClick={() => removeItem(item.product.id, item.selectedVariant?.id)}
                               className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-100"
                             >
                               <Trash2 size={15} />

@@ -1,9 +1,14 @@
 import { Boxes, MessageCircle, Package } from 'lucide-react'
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { brandConfigs, storeSites } from '../../lib/constants'
 import { buildWhatsAppLink } from '../../lib/utils'
 
 export function WhatsAppFab() {
   const [open, setOpen] = useState(false)
+  const location = useLocation()
+  const currentSite = storeSites.find((site) => location.pathname.startsWith(`/${site}`)) || 'anahinails'
+  const brand = brandConfigs[currentSite]
 
   return (
     <div className="fixed bottom-5 right-5 z-50">
@@ -11,11 +16,11 @@ export function WhatsAppFab() {
         <div className="mb-3 w-[280px] overflow-hidden rounded-[22px] border border-[var(--color-border)] bg-white shadow-[0_20px_60px_rgba(17,24,39,0.14)]">
           <div className="flex items-center gap-3 bg-[#25d366] px-4 py-3 text-white">
             <MessageCircle size={18} />
-            <span className="text-sm font-semibold">Anahi WhatsApp</span>
+            <span className="text-sm font-semibold">{brand.shortName} WhatsApp</span>
           </div>
           <div className="p-3">
             <a
-              href={buildWhatsAppLink('Hola! Necesito atencion personalizada para comprar en Anahi Nails Diamond.')}
+              href={buildWhatsAppLink(`Hola! Necesito atencion personalizada para comprar en ${brand.name}.`)}
               target="_blank"
               rel="noreferrer"
               className="mb-2 flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-zinc-50"
@@ -26,7 +31,7 @@ export function WhatsAppFab() {
               <span className="text-sm font-medium text-zinc-900">Atencion personalizada</span>
             </a>
             <a
-              href={buildWhatsAppLink('Hola! Quiero consultar stock y hacer un pedido en Anahi Nails Diamond.')}
+              href={buildWhatsAppLink(`Hola! Quiero consultar stock y hacer un pedido en ${brand.name}.`)}
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-zinc-50"

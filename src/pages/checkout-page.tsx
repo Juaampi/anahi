@@ -35,7 +35,9 @@ export function CheckoutPage() {
     couponCode: couponResult?.valid ? couponResult.coupon?.code : undefined,
     items: items.map((item) => ({
       productId: item.product.id,
-      productName: item.product.name,
+      productName: `${item.product.name}${item.selectedVariant ? ` - ${item.selectedVariant.name || item.selectedVariant.color}` : ''}`,
+      variantId: item.selectedVariant?.id,
+      variantLabel: item.selectedVariant ? item.selectedVariant.name || item.selectedVariant.color : undefined,
       quantity: item.quantity,
       unitPrice: item.product.price,
     })),
@@ -195,9 +197,10 @@ export function CheckoutPage() {
             <h2 className="font-display text-xl font-semibold text-[var(--color-primary)]">Resumen del pedido</h2>
             <div className="mt-6 space-y-4">
               {items.map((item) => (
-                <div key={item.product.id} className="flex items-center justify-between gap-3 text-sm text-[var(--color-muted)]">
+                <div key={`${item.product.id}-${item.selectedVariant?.id || 'base'}`} className="flex items-center justify-between gap-3 text-sm text-[var(--color-muted)]">
                   <span>
                     {item.product.name} x {item.quantity}
+                    {item.selectedVariant ? ` · ${item.selectedVariant.name || item.selectedVariant.color}` : ''}
                   </span>
                   <span>{formatCurrency(item.product.price * item.quantity)}</span>
                 </div>

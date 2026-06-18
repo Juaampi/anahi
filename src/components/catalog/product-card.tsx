@@ -2,7 +2,7 @@ import { Search, ShoppingBag } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Product } from '../../types'
 import { getProductFallbackImage } from '../../lib/constants'
-import { formatCurrency } from '../../lib/utils'
+import { buildStorePath, formatCurrency } from '../../lib/utils'
 import { useCartStore } from '../../store/cart-store'
 import { SmartImage } from '../ui/smart-image'
 
@@ -19,7 +19,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <article className="overflow-hidden rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface-card)] p-4 shadow-[0_10px_24px_rgba(17,24,39,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(17,24,39,0.09)]">
-      <Link to={`/productos/${product.slug}`} className="block">
+      <Link to={buildStorePath(product.site, `/productos/${product.slug}`)} className="block">
         <div className="relative rounded-[20px] bg-[linear-gradient(180deg,#ffffff_0%,#fff7f4_100%)] px-4 pb-4 pt-12">
           {firstBadge ? (
             <span className="absolute left-4 top-4 rounded-full bg-[linear-gradient(135deg,#ff9f43_0%,#ff6f3c_100%)] px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.08em] text-white shadow-[0_8px_18px_rgba(255,111,60,0.28)]">
@@ -37,8 +37,13 @@ export function ProductCard({ product }: { product: Product }) {
 
       <div className="px-2 pb-2 pt-5">
         <h3 className="min-h-[72px] font-display text-[1.05rem] font-black uppercase leading-7 text-[var(--color-primary)]">
-          <Link to={`/productos/${product.slug}`}>{product.name}</Link>
+          <Link to={buildStorePath(product.site, `/productos/${product.slug}`)}>{product.name}</Link>
         </h3>
+        {product.subcategory ? (
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+            {product.categoryName} · {product.subcategory}
+          </p>
+        ) : null}
 
         <p className="mt-4 text-[0.95rem] font-medium leading-7 text-[#00a651]">
           Mismo precio en
@@ -76,7 +81,7 @@ export function ProductCard({ product }: { product: Product }) {
 
         <div className="mt-5 flex gap-2">
           <Link
-            to={`/productos/${product.slug}`}
+            to={buildStorePath(product.site, `/productos/${product.slug}`)}
             className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-card)] px-4 py-3 text-sm font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
           >
             <Search size={15} />

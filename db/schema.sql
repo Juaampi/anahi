@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS categories (
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   image_url TEXT,
+  site TEXT NOT NULL DEFAULT 'anahinails',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -20,6 +21,9 @@ CREATE TABLE IF NOT EXISTS products (
   featured BOOLEAN NOT NULL DEFAULT FALSE,
   badges JSONB NOT NULL DEFAULT '[]'::jsonb,
   image_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
+  variants JSONB NOT NULL DEFAULT '[]'::jsonb,
+  subcategory TEXT,
+  site TEXT NOT NULL DEFAULT 'anahinails',
   category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

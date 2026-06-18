@@ -18,7 +18,7 @@ export function HomePage() {
   useSEO({ title: 'Home' })
   const { data } = useQuery({
     queryKey: ['storefront'],
-    queryFn: api.storefront,
+    queryFn: () => api.storefront('anahinails'),
     retry: false,
   })
   const storefront = data || fallbackStorefront

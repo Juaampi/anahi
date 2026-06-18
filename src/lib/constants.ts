@@ -11,10 +11,48 @@ export const siteConfig = {
     'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=1600&q=80',
 }
 
-export const navLinks = [
-  { label: 'Todos los productos', to: '/productos' },
-  { label: 'Nuevos ingresos', to: '/productos?sort=newest' },
-]
+export const storeSites = ['anahinails', 'wildspirit'] as const
+
+export const brandConfigs = {
+  anahinails: {
+    site: 'anahinails',
+    name: 'Anahi Nails Diamond',
+    shortName: 'Anahi Nails',
+    tagline: 'Beauty Supply',
+    description:
+      'Insumos profesionales de manicuria, nail art y mesa de trabajo con una estetica premium y compra agil.',
+    introTitle: 'Anahi Nails Diamond',
+    introDescription:
+      'Esmaltes, polygel, herramientas y belleza profesional en una tienda visual, clara y lista para vender.',
+    heroImage: '/anahi-diamond-logo.png',
+    logo: '/anahi-diamond-logo.png',
+    accent: '#d96f9a',
+    accentSoft: '#fff1f6',
+    surface: '#fff8fb',
+    productLabel: 'Ver tienda',
+  },
+  wildspirit: {
+    site: 'wildspirit',
+    name: 'Wild Spirit Lingerie',
+    shortName: 'Wild Spirit',
+    tagline: 'Diseño a pedido',
+    description:
+      'Remeras y buzos hechos a pedido, con diseño propio, esencia personal y una identidad visual mas libre.',
+    introTitle: 'Wild Spirit Lingerie',
+    introDescription:
+      'Vesti tu esencia. No la de todos. Prendas a pedido, sin stock ni reventa, con calidad premium y diseño exclusivo.',
+    heroImage: '/wild-spirit-logo.jpeg',
+    logo: '/wild-spirit-logo.jpeg',
+    accent: '#0d6b7d',
+    accentSoft: '#eefcff',
+    surface: '#f7fcff',
+    productLabel: 'Ver coleccion',
+  },
+} as const
+
+export function getBrandConfig(site: keyof typeof brandConfigs) {
+  return brandConfigs[site]
+}
 
 export const categoryImageMap: Record<string, string> = {
   semipermanentes: '/placeholders/semipermanentes.svg',

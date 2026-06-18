@@ -8,6 +8,7 @@ export const fallbackCategories: Category[] = [
     name: 'Semipermanentes',
     description: 'Colores y lineas de alta rotacion para servicio diario.',
     imageUrl: categoryImageMap.semipermanentes,
+    site: 'anahinails',
   },
   {
     id: 'cat-polygel',
@@ -15,6 +16,7 @@ export const fallbackCategories: Category[] = [
     name: 'Polygel',
     description: 'Lineas y tonos para construccion y refuerzo profesional.',
     imageUrl: categoryImageMap.polygel,
+    site: 'anahinails',
   },
   {
     id: 'cat-decoracion',
@@ -22,6 +24,7 @@ export const fallbackCategories: Category[] = [
     name: 'Decoracion y Nail Art',
     description: 'Stickers, pigmentos, piedras y detalles para elevar el ticket.',
     imageUrl: categoryImageMap.decoracion,
+    site: 'anahinails',
   },
   {
     id: 'cat-soft-gel',
@@ -29,6 +32,7 @@ export const fallbackCategories: Category[] = [
     name: 'Soft Gel',
     description: 'Tips y soluciones para sets rapidos, prolijos y premium.',
     imageUrl: categoryImageMap['soft-gel'],
+    site: 'anahinails',
   },
   {
     id: 'cat-herramientas',
@@ -36,6 +40,7 @@ export const fallbackCategories: Category[] = [
     name: 'Cabinas y Herramientas',
     description: 'Cabinas, tornos, fresas y accesorios clave para profesionales.',
     imageUrl: categoryImageMap['cabinas-y-herramientas'],
+    site: 'anahinails',
   },
   {
     id: 'cat-pinceles',
@@ -43,6 +48,23 @@ export const fallbackCategories: Category[] = [
     name: 'Pinceles y Accesorios',
     description: 'Complementos de trabajo para detalle, precision y terminacion.',
     imageUrl: categoryImageMap['pinceles-y-accesorios'],
+    site: 'anahinails',
+  },
+  {
+    id: 'cat-ws-buzos',
+    slug: 'buzos',
+    name: 'Buzos',
+    description: 'Buzos premium a pedido y de identidad visual propia.',
+    imageUrl: '/wild-spirit-logo.jpeg',
+    site: 'wildspirit',
+  },
+  {
+    id: 'cat-ws-remeras',
+    slug: 'remeras',
+    name: 'Remeras',
+    description: 'Remeras boxy y oversized para diseño exclusivo.',
+    imageUrl: '/wild-spirit-logo.jpeg',
+    site: 'wildspirit',
   },
 ]
 
@@ -62,6 +84,17 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap.semipermanentes],
     categoryId: 'cat-semipermanentes',
     categoryName: 'Semipermanentes',
+    site: 'anahinails',
+    subcategory: 'City Girl',
+    variants: [
+      {
+        id: 'var-fb-01',
+        name: 'Tono 40',
+        color: 'Cherry',
+        imageUrl: categoryImageMap.semipermanentes,
+        stock: 12,
+      },
+    ],
   },
   {
     id: 'prod-02',
@@ -78,6 +111,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap.decoracion],
     categoryId: 'cat-decoracion',
     categoryName: 'Decoracion y Nail Art',
+    site: 'anahinails',
+    subcategory: 'Bases',
+    variants: [],
   },
   {
     id: 'prod-03',
@@ -94,6 +130,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap.polygel],
     categoryId: 'cat-polygel',
     categoryName: 'Polygel',
+    site: 'anahinails',
+    subcategory: 'Construccion',
+    variants: [],
   },
   {
     id: 'prod-03b',
@@ -110,6 +149,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap.polygel],
     categoryId: 'cat-polygel',
     categoryName: 'Polygel',
+    site: 'anahinails',
+    subcategory: 'City Girl',
+    variants: [],
   },
   {
     id: 'prod-03c',
@@ -126,6 +168,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap.polygel],
     categoryId: 'cat-polygel',
     categoryName: 'Polygel',
+    site: 'anahinails',
+    subcategory: 'City Girl',
+    variants: [],
   },
   {
     id: 'prod-03d',
@@ -142,6 +187,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap.polygel],
     categoryId: 'cat-polygel',
     categoryName: 'Polygel',
+    site: 'anahinails',
+    subcategory: 'City Girl',
+    variants: [],
   },
   {
     id: 'prod-04',
@@ -158,6 +206,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap.polygel],
     categoryId: 'cat-polygel',
     categoryName: 'Polygel',
+    site: 'anahinails',
+    subcategory: 'Easy Gel',
+    variants: [],
   },
   {
     id: 'prod-05',
@@ -174,6 +225,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap.decoracion],
     categoryId: 'cat-decoracion',
     categoryName: 'Decoracion y Nail Art',
+    site: 'anahinails',
+    subcategory: 'Cat Eye',
+    variants: [],
   },
   {
     id: 'prod-05b',
@@ -190,6 +244,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap.decoracion],
     categoryId: 'cat-decoracion',
     categoryName: 'Decoracion y Nail Art',
+    site: 'anahinails',
+    subcategory: 'Cat Eye',
+    variants: [],
   },
   {
     id: 'prod-05c',
@@ -206,6 +263,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap.semipermanentes],
     categoryId: 'cat-semipermanentes',
     categoryName: 'Semipermanentes',
+    site: 'anahinails',
+    subcategory: 'Navi',
+    variants: [],
   },
   {
     id: 'prod-08',
@@ -222,6 +282,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap['cabinas-y-herramientas']],
     categoryId: 'cat-herramientas',
     categoryName: 'Cabinas y Herramientas',
+    site: 'anahinails',
+    subcategory: 'Cabinas',
+    variants: [],
   },
   {
     id: 'prod-08b',
@@ -238,6 +301,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap['cabinas-y-herramientas']],
     categoryId: 'cat-herramientas',
     categoryName: 'Cabinas y Herramientas',
+    site: 'anahinails',
+    subcategory: 'Cabinas',
+    variants: [],
   },
   {
     id: 'prod-08c',
@@ -254,6 +320,9 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap['cabinas-y-herramientas']],
     categoryId: 'cat-herramientas',
     categoryName: 'Cabinas y Herramientas',
+    site: 'anahinails',
+    subcategory: 'Cabinas',
+    variants: [],
   },
   {
     id: 'prod-08d',
@@ -270,12 +339,59 @@ export const fallbackProducts: Product[] = [
     imageUrls: [categoryImageMap['cabinas-y-herramientas']],
     categoryId: 'cat-herramientas',
     categoryName: 'Cabinas y Herramientas',
+    site: 'anahinails',
+    subcategory: 'Extractores',
+    variants: [],
+  },
+  {
+    id: 'prod-ws-fb-01',
+    slug: 'wild-spirit-buzo-signature',
+    sku: 'WS-BZ-FB-01',
+    name: 'Buzo Signature Wild Spirit',
+    description: 'Buzo de diseño exclusivo, producido a pedido y con identidad visual marcada.',
+    shortDescription: 'Buzo premium a pedido.',
+    price: 48900,
+    compareAtPrice: null,
+    stock: 11,
+    featured: true,
+    badges: ['best-seller'],
+    imageUrls: ['/wild-spirit-logo.jpeg'],
+    categoryId: 'cat-ws-buzos',
+    categoryName: 'Buzos',
+    site: 'wildspirit',
+    subcategory: 'Oversize',
+    variants: [
+      { id: 'prod-ws-fb-01-black', name: 'Negro', color: 'Negro', imageUrl: '/wild-spirit-logo.jpeg', stock: 5 },
+      { id: 'prod-ws-fb-01-cream', name: 'Cream', color: 'Cream', imageUrl: '/wild-spirit-logo.jpeg', stock: 6 },
+    ],
+  },
+  {
+    id: 'prod-ws-fb-02',
+    slug: 'wild-spirit-remera-essence',
+    sku: 'WS-RM-FB-02',
+    name: 'Remera Essence Wild Spirit',
+    description: 'Remera premium de algodón con diseño exclusivo y confección a pedido.',
+    shortDescription: 'Remera boxy a pedido.',
+    price: 28900,
+    compareAtPrice: null,
+    stock: 14,
+    featured: true,
+    badges: ['new'],
+    imageUrls: ['/wild-spirit-logo.jpeg'],
+    categoryId: 'cat-ws-remeras',
+    categoryName: 'Remeras',
+    site: 'wildspirit',
+    subcategory: 'Boxy',
+    variants: [
+      { id: 'prod-ws-fb-02-white', name: 'Blanca', color: 'Blanco', imageUrl: '/wild-spirit-logo.jpeg', stock: 7 },
+      { id: 'prod-ws-fb-02-stone', name: 'Stone', color: 'Stone', imageUrl: '/wild-spirit-logo.jpeg', stock: 7 },
+    ],
   },
 ]
 
 export const fallbackStorefront: StorefrontPayload = {
   categories: fallbackCategories,
-  featuredProducts: fallbackProducts,
+  featuredProducts: fallbackProducts.filter((item) => item.site === 'anahinails'),
   bestSellers: fallbackProducts.filter((item) => item.badges.includes('best-seller')).slice(0, 4),
   newArrivals: fallbackProducts.filter((item) => item.badges.includes('new')).slice(0, 4),
 }

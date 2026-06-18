@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Menu, Package, Shapes, ShoppingCart, TicketPercent } from 'lucide-react'
+import { Menu, Package, Palette, Shapes, ShoppingCart, TicketPercent } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { api } from '../lib/api'
+import { brandConfigs, storeSites } from '../lib/constants'
 import { formatCurrency, normalizeCouponCode, slugify } from '../lib/utils'
 import { useSEO } from '../hooks/use-seo'
 import { cn } from '../lib/utils'
-import type { Category, DiscountCoupon, Product } from '../types'
+import type { Category, DiscountCoupon, Product, ProductVariant, StoreSite } from '../types'
 
 type AdminTab = 'products' | 'categories' | 'orders' | 'coupons'
 
@@ -22,13 +23,26 @@ const emptyProductForm: Partial<Product> = {
   badges: [],
   featured: false,
   categoryId: '',
+  site: 'anahinails',
+  subcategory: '',
+  variants: [],
 }
 
 const emptyCategoryForm: Partial<Category> = {
   name: '',
   description: '',
   slug: '',
+  site: 'anahinails',
+  imageUrl: '',
 }
+
+const emptyVariant = (): ProductVariant => ({
+  id: '',
+  name: '',
+  color: '',
+  imageUrl: '',
+  stock: 0,
+})
 
 const emptyCouponForm: Partial<DiscountCoupon> = {
   code: '',
@@ -146,10 +160,14 @@ export function AdminDashboardPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-orders'] }),
   })
 
-  async function uploadImage(file: File) {
+  async function uploadImage(
+    file: File,
+    onUploaded: (url: string) => void,
+    folder = 'anahi-nails-diamond/products',
+  ) {
     setUploadingImage(true)
     try {
-      const signature = await api.signCloudinaryUpload(token, 'anahi-nails-diamond/products')
+      const signature = await api.signCloudinaryUpload(token, folder)
       const data = new FormData()
       data.append('file', file)
       data.append('api_key', signature.apiKey)
@@ -163,7 +181,7 @@ export function AdminDashboardPage() {
       })
       const result = (await response.json()) as { secure_url?: string }
       if (result.secure_url) {
-        setForm((current) => ({ ...current, imageUrls: [result.secure_url!] }))
+        onUploaded(result.secure_url)
       }
     } finally {
       setUploadingImage(false)
@@ -171,6 +189,10 @@ export function AdminDashboardPage() {
   }
 
   const categoryOptions = useMemo(() => categoriesQuery.data || [], [categoriesQuery.data])
+  const filteredCategoryOptions = useMemo(
+    () => categoryOptions.filter((category) => category.site === (form.site || 'anahinails')),
+    [categoryOptions, form.site],
+  )
   const currentTab = adminTabs.find((item) => item.key === activeTab) || adminTabs[0]
 
   if (!token) {
@@ -353,7 +375,38 @@ export function AdminDashboardPage() {
                             className={inputClass}
                           />
                         </label>
-                      ))}
+                        ))}
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label>
+                        <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">¿De qué sitio es?</span>
+                        <select
+                          value={form.site || 'anahinails'}
+                          onChange={(event) =>
+                            setForm((current) => ({
+                              ...current,
+                              site: event.target.value as StoreSite,
+                              categoryId: '',
+                            }))
+                          }
+                          className={inputClass}
+                        >
+                          {storeSites.map((site) => (
+                            <option key={site} value={site}>
+                              {brandConfigs[site].name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Subcategoría</span>
+                        <input
+                          value={form.subcategory || ''}
+                          onChange={(event) => setForm((current) => ({ ...current, subcategory: event.target.value }))}
+                          placeholder="Ej: Cat Eye, Oversize, Bases"
+                          className={inputClass}
+                        />
+                      </label>
                     </div>
                     <label>
                       <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Categoría</span>
@@ -363,7 +416,7 @@ export function AdminDashboardPage() {
                         className={inputClass}
                       >
                         <option value="">Seleccionar</option>
-                        {categoryOptions.map((category) => (
+                        {filteredCategoryOptions.map((category) => (
                           <option key={category.id} value={category.id}>
                             {category.name}
                           </option>
@@ -374,7 +427,7 @@ export function AdminDashboardPage() {
                       <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Imagen principal URL</span>
                       <input
                         value={form.imageUrls?.[0] || ''}
-                        onChange={(event) => setForm((current) => ({ ...current, imageUrls: [event.target.value] }))}
+                        onChange={(event) => setForm((current) => ({ ...current, imageUrls: [event.target.value, ...(current.imageUrls || []).slice(1)] }))}
                         className={inputClass}
                       />
                     </label>
@@ -385,7 +438,11 @@ export function AdminDashboardPage() {
                         accept="image/*"
                         onChange={(event) => {
                           const file = event.target.files?.[0]
-                          if (file) uploadImage(file)
+                          if (file) {
+                            uploadImage(file, (url) =>
+                              setForm((current) => ({ ...current, imageUrls: [url, ...(current.imageUrls || []).slice(1)] })),
+                            )
+                          }
                         }}
                         className="block w-full text-sm"
                       />
@@ -422,6 +479,136 @@ export function AdminDashboardPage() {
                         </label>
                       ))}
                     </div>
+                    <div className="rounded-[1.75rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-[var(--color-text)]">Variantes</p>
+                          <p className="text-xs text-[var(--color-muted)]">Cada variante puede tener foto, color y cantidad.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((current) => ({
+                              ...current,
+                              variants: [...(current.variants || []), emptyVariant()],
+                            }))
+                          }
+                          className={outlineButtonClass}
+                        >
+                          Agregar variante
+                        </button>
+                      </div>
+                      <div className="grid gap-4">
+                        {(form.variants || []).map((variant, index) => (
+                          <div key={`${variant.id || 'variant'}-${index}`} className="rounded-[1.5rem] border border-[var(--color-border)] bg-white p-4">
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              <label>
+                                <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Nombre</span>
+                                <input
+                                  value={variant.name || ''}
+                                  onChange={(event) =>
+                                    setForm((current) => ({
+                                      ...current,
+                                      variants: (current.variants || []).map((item, itemIndex) =>
+                                        itemIndex === index ? { ...item, name: event.target.value } : item,
+                                      ),
+                                    }))
+                                  }
+                                  placeholder="Ej: Oversize Negro"
+                                  className={inputClass}
+                                />
+                              </label>
+                              <label>
+                                <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Color</span>
+                                <div className="relative">
+                                  <Palette size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-muted)]" />
+                                  <input
+                                    value={variant.color || ''}
+                                    onChange={(event) =>
+                                      setForm((current) => ({
+                                        ...current,
+                                        variants: (current.variants || []).map((item, itemIndex) =>
+                                          itemIndex === index ? { ...item, color: event.target.value } : item,
+                                        ),
+                                      }))
+                                    }
+                                    placeholder="Ej: Negro, Nude, Blanco"
+                                    className={cn(inputClass, 'pl-11')}
+                                  />
+                                </div>
+                              </label>
+                              <label>
+                                <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Foto URL</span>
+                                <input
+                                  value={variant.imageUrl || ''}
+                                  onChange={(event) =>
+                                    setForm((current) => ({
+                                      ...current,
+                                      variants: (current.variants || []).map((item, itemIndex) =>
+                                        itemIndex === index ? { ...item, imageUrl: event.target.value } : item,
+                                      ),
+                                    }))
+                                  }
+                                  className={inputClass}
+                                />
+                              </label>
+                              <label>
+                                <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Cantidad</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={variant.stock || 0}
+                                  onChange={(event) =>
+                                    setForm((current) => ({
+                                      ...current,
+                                      variants: (current.variants || []).map((item, itemIndex) =>
+                                        itemIndex === index ? { ...item, stock: Number(event.target.value) } : item,
+                                      ),
+                                    }))
+                                  }
+                                  className={inputClass}
+                                />
+                              </label>
+                            </div>
+                            <div className="mt-4 flex flex-wrap gap-3">
+                              <label className="block rounded-[1.25rem] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-muted)]">
+                                <span className="mb-2 block font-medium text-[var(--color-text)]">Subir foto de variante</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0]
+                                    if (file) {
+                                      uploadImage(file, (url) =>
+                                        setForm((current) => ({
+                                          ...current,
+                                          variants: (current.variants || []).map((item, itemIndex) =>
+                                            itemIndex === index ? { ...item, imageUrl: url } : item,
+                                          ),
+                                        })),
+                                      )
+                                    }
+                                  }}
+                                  className="block w-full text-sm"
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setForm((current) => ({
+                                    ...current,
+                                    variants: (current.variants || []).filter((_, itemIndex) => itemIndex !== index),
+                                  }))
+                                }
+                                className="rounded-full border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600"
+                              >
+                                Eliminar variante
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                     <button className="btn-primary rounded-full px-5 py-4 text-sm font-semibold">
                       {productMutation.isPending ? 'Guardando...' : 'Guardar producto'}
                     </button>
@@ -435,6 +622,7 @@ export function AdminDashboardPage() {
                         <tr>
                           <th className="px-5 py-4">Producto</th>
                           <th className="px-5 py-4">Categoría</th>
+                          <th className="px-5 py-4">Sitio</th>
                           <th className="px-5 py-4">Precio</th>
                           <th className="px-5 py-4">Stock</th>
                           <th className="px-5 py-4">Acciones</th>
@@ -445,6 +633,7 @@ export function AdminDashboardPage() {
                           <tr key={product.id} className="border-t border-[var(--color-border)]">
                             <td className="px-5 py-4 font-medium text-[var(--color-text)]">{product.name}</td>
                             <td className="px-5 py-4 text-[var(--color-muted)]">{product.categoryName}</td>
+                            <td className="px-5 py-4 text-[var(--color-muted)]">{brandConfigs[product.site].shortName}</td>
                             <td className="px-5 py-4 text-[var(--color-muted)]">{formatCurrency(product.price)}</td>
                             <td className="px-5 py-4 text-[var(--color-muted)]">{product.stock}</td>
                             <td className="px-5 py-4">
@@ -501,6 +690,23 @@ export function AdminDashboardPage() {
                       placeholder="Descripción"
                       className={cn(inputClass, 'min-h-28')}
                     />
+                    <select
+                      value={categoryForm.site || 'anahinails'}
+                      onChange={(event) => setCategoryForm((current) => ({ ...current, site: event.target.value as StoreSite }))}
+                      className={inputClass}
+                    >
+                      {storeSites.map((site) => (
+                        <option key={site} value={site}>
+                          {brandConfigs[site].name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      value={categoryForm.imageUrl || ''}
+                      onChange={(event) => setCategoryForm((current) => ({ ...current, imageUrl: event.target.value }))}
+                      placeholder="Imagen de categoría (opcional)"
+                      className={inputClass}
+                    />
                     <button className="btn-primary rounded-full px-5 py-4 text-sm font-semibold">
                       Guardar categoría
                     </button>
@@ -513,6 +719,9 @@ export function AdminDashboardPage() {
                       <div>
                         <h3 className="text-lg font-semibold text-[var(--color-text)]">{category.name}</h3>
                         <p className="text-sm text-[var(--color-muted)]">{category.description}</p>
+                        <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                          {brandConfigs[category.site].shortName}
+                        </p>
                       </div>
                       <div className="flex gap-3">
                         <button type="button" onClick={() => setCategoryForm(category)} className={outlineButtonClass}>

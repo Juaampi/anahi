@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { CartItem, Product } from '../types'
+import type { CartItem, Product, ProductVariant } from '../types'
 
 const STORAGE_KEY = 'anahi-nails-diamond-cart'
 
@@ -7,10 +7,14 @@ interface CartState {
   items: CartItem[]
   hydrated: boolean
   hydrate: () => void
-  addItem: (product: Product, quantity?: number) => void
-  removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
+  addItem: (product: Product, quantity?: number, selectedVariant?: ProductVariant | null) => void
+  removeItem: (productId: string, variantId?: string | null) => void
+  updateQuantity: (productId: string, quantity: number, variantId?: string | null) => void
   clearCart: () => void
+}
+
+function getItemKey(productId: string, variantId?: string | null) {
+  return `${productId}::${variantId || 'base'}`
 }
 
 function persist(items: CartItem[]) {
@@ -30,29 +34,36 @@ export const useCartStore = create<CartState>((set, get) => ({
       set({ hydrated: true })
     }
   },
-  addItem: (product, quantity = 1) => {
+  addItem: (product, quantity = 1, selectedVariant = null) => {
     const current = get().items
-    const existing = current.find((item) => item.product.id === product.id)
+    const itemKey = getItemKey(product.id, selectedVariant?.id)
+    const existing = current.find((item) => getItemKey(item.product.id, item.selectedVariant?.id) === itemKey)
+    const limit = selectedVariant?.stock || product.stock || 99
     const items = existing
       ? current.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: Math.min(item.quantity + quantity, product.stock || 99) }
+          getItemKey(item.product.id, item.selectedVariant?.id) === itemKey
+            ? { ...item, quantity: Math.min(item.quantity + quantity, limit) }
             : item,
         )
-      : [...current, { product, quantity }]
+      : [...current, { product, quantity: Math.min(quantity, limit), selectedVariant }]
     persist(items)
     set({ items })
   },
-  removeItem: (productId) => {
-    const items = get().items.filter((item) => item.product.id !== productId)
+  removeItem: (productId, variantId = null) => {
+    const itemKey = getItemKey(productId, variantId)
+    const items = get().items.filter((item) => getItemKey(item.product.id, item.selectedVariant?.id) !== itemKey)
     persist(items)
     set({ items })
   },
-  updateQuantity: (productId, quantity) => {
+  updateQuantity: (productId, quantity, variantId = null) => {
+    const itemKey = getItemKey(productId, variantId)
     const items = get().items
       .map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity: Math.max(1, Math.min(quantity, item.product.stock || 99)) }
+        getItemKey(item.product.id, item.selectedVariant?.id) === itemKey
+          ? {
+              ...item,
+              quantity: Math.max(1, Math.min(quantity, item.selectedVariant?.stock || item.product.stock || 99)),
+            }
           : item,
       )
       .filter((item) => item.quantity > 0)

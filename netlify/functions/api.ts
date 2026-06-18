@@ -19,6 +19,17 @@ type ProductInput = {
   badges?: string[]
   imageUrls?: string[]
   categoryId?: string
+  site?: string
+  subcategory?: string
+  variants?: Array<{ id?: string; name?: string; color?: string; imageUrl?: string; stock?: number }>
+}
+
+type CategoryInput = {
+  slug: string
+  name: string
+  description: string
+  imageUrl?: string
+  site?: string
 }
 
 type CouponInput = {
@@ -107,9 +118,25 @@ function normalizeProduct(row: DataRow) {
       : Array.isArray(row.imageUrls)
         ? row.imageUrls
         : JSON.parse(row.image_urls || '[]'),
+    variants: Array.isArray(row.variants)
+      ? row.variants
+      : JSON.parse(String(row.variants || '[]')),
     categoryId: row.category_id ?? row.categoryId,
     categoryName: row.category_name ?? row.categoryName,
+    site: row.site ?? 'anahinails',
+    subcategory: row.subcategory ?? null,
     createdAt: row.created_at ?? row.createdAt,
+  }
+}
+
+function normalizeCategory(row: DataRow) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    description: row.description,
+    imageUrl: row.image_url ?? row.imageUrl ?? null,
+    site: row.site ?? 'anahinails',
   }
 }
 
@@ -138,10 +165,18 @@ function sortProducts(items: Array<Record<string, unknown> & { price: number; fe
   return clone.sort((a, b) => Number(b.featured) - Number(a.featured))
 }
 
-async function listCategories() {
+async function listCategories(site?: string) {
   const sql = await ensureDatabase()
-  if (!sql) return getMemoryState().categories
-  return sql.query('SELECT id, slug, name, description, image_url FROM categories ORDER BY name ASC')
+  if (!sql) {
+    const items = site ? getMemoryState().categories.filter((item) => item.site === site) : getMemoryState().categories
+    return items.map(normalizeCategory)
+  }
+  if (site) {
+    const rows = await sql.query('SELECT id, slug, name, description, image_url, site FROM categories WHERE site = $1 ORDER BY name ASC', [site])
+    return rows.map(normalizeCategory)
+  }
+  const rows = await sql.query('SELECT id, slug, name, description, image_url, site FROM categories ORDER BY name ASC')
+  return rows.map(normalizeCategory)
 }
 
 async function listCoupons() {
@@ -154,6 +189,8 @@ async function listCoupons() {
 async function listProducts(searchParams: URLSearchParams) {
   const sql = await ensureDatabase()
   const category = searchParams.get('category')
+  const subcategory = searchParams.get('subcategory')
+  const site = searchParams.get('site')
   const q = searchParams.get('q')?.toLowerCase()
   const featured = searchParams.get('featured')
   const minPrice = Number(searchParams.get('minPrice') || 0)
@@ -162,7 +199,9 @@ async function listProducts(searchParams: URLSearchParams) {
 
   if (!sql) {
     let items = [...getMemoryState().products]
+    if (site) items = items.filter((item) => item.site === site)
     if (category) items = items.filter((item) => item.categoryName.toLowerCase().includes(category.toLowerCase()) || item.categoryId === category || item.slug.includes(category))
+    if (subcategory) items = items.filter((item) => (item.subcategory || '').toLowerCase() === subcategory.toLowerCase())
     if (q) items = items.filter((item) => item.name.toLowerCase().includes(q))
     if (featured === 'true') items = items.filter((item) => item.featured)
     if (minPrice) items = items.filter((item) => item.price >= minPrice)
@@ -180,6 +219,14 @@ async function listProducts(searchParams: URLSearchParams) {
   if (category) {
     params.push(category)
     query += ` AND (c.slug = $${params.length} OR p.category_id = $${params.length})`
+  }
+  if (subcategory) {
+    params.push(subcategory)
+    query += ` AND LOWER(COALESCE(p.subcategory, '')) = LOWER($${params.length})`
+  }
+  if (site) {
+    params.push(site)
+    query += ` AND p.site = $${params.length}`
   }
   if (q) {
     params.push(`%${q}%`)
@@ -224,6 +271,13 @@ async function getProductBySlug(slug: string) {
 
 async function createOrUpdateProduct(input: ProductInput, id?: string) {
   const sql = await ensureDatabase()
+  const normalizedVariants = (input.variants || []).map((variant, index) => ({
+    id: variant.id || `${id || input.slug || 'variant'}-${index + 1}`,
+    name: variant.name || '',
+    color: variant.color || '',
+    imageUrl: variant.imageUrl || '',
+    stock: Number(variant.stock || 0),
+  }))
   if (!sql) {
     const state = getMemoryState()
     const existing = state.products.find((item) => item.id === id)
@@ -241,8 +295,11 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
       featured: Boolean(input.featured),
       badges: input.badges || [],
       imageUrls: input.imageUrls?.filter(Boolean) || [],
+      variants: normalizedVariants,
       categoryId: input.categoryId || '',
       categoryName: category?.name || '',
+      site: input.site || category?.site || 'anahinails',
+      subcategory: input.subcategory || '',
     }
     if (existing) {
       Object.assign(existing, payload)
@@ -256,8 +313,8 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
     await sql.query(
       `UPDATE products
        SET slug = $1, sku = $2, name = $3, description = $4, short_description = $5, price = $6, compare_at_price = $7,
-           stock = $8, featured = $9, badges = $10::jsonb, image_urls = $11::jsonb, category_id = $12
-       WHERE id = $13`,
+           stock = $8, featured = $9, badges = $10::jsonb, image_urls = $11::jsonb, variants = $12::jsonb, subcategory = $13, site = $14, category_id = $15
+       WHERE id = $16`,
       [
         input.slug,
         input.sku,
@@ -270,6 +327,9 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
         input.featured,
         JSON.stringify(input.badges || []),
         JSON.stringify(input.imageUrls || []),
+        JSON.stringify(normalizedVariants),
+        input.subcategory || null,
+        input.site || 'anahinails',
         input.categoryId,
         id,
       ],
@@ -280,8 +340,8 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
   const newId = createId('prod')
   await sql.query(
     `INSERT INTO products
-      (id, slug, sku, name, description, short_description, price, compare_at_price, stock, featured, badges, image_urls, category_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13)`,
+      (id, slug, sku, name, description, short_description, price, compare_at_price, stock, featured, badges, image_urls, variants, subcategory, site, category_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13::jsonb, $14, $15, $16)`,
     [
       newId,
       input.slug,
@@ -295,6 +355,9 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
       input.featured,
       JSON.stringify(input.badges || []),
       JSON.stringify(input.imageUrls || []),
+      JSON.stringify(normalizedVariants),
+      input.subcategory || null,
+      input.site || 'anahinails',
       input.categoryId,
     ],
   )
@@ -311,7 +374,7 @@ async function deleteProduct(id: string) {
 }
 
 async function createOrUpdateCategory(
-  input: { slug: string; name: string; description: string },
+  input: CategoryInput,
   id?: string,
 ) {
   const sql = await ensureDatabase()
@@ -322,6 +385,8 @@ async function createOrUpdateCategory(
       slug: input.slug,
       name: input.name,
       description: input.description,
+      imageUrl: input.imageUrl || '',
+      site: input.site || 'anahinails',
     }
     const existing = state.categories.find((item) => item.id === id)
     if (existing) {
@@ -333,22 +398,24 @@ async function createOrUpdateCategory(
   }
 
   if (id) {
-    await sql.query('UPDATE categories SET slug = $1, name = $2, description = $3 WHERE id = $4', [
+    await sql.query('UPDATE categories SET slug = $1, name = $2, description = $3, image_url = $4, site = $5 WHERE id = $6', [
       input.slug,
       input.name,
       input.description,
+      input.imageUrl || null,
+      input.site || 'anahinails',
       id,
     ])
-    const rows = await sql.query('SELECT id, slug, name, description FROM categories WHERE id = $1', [id])
+    const rows = await sql.query('SELECT id, slug, name, description, image_url, site FROM categories WHERE id = $1', [id])
     return rows[0]
   }
 
   const newId = createId('cat')
   await sql.query(
-    'INSERT INTO categories (id, slug, name, description) VALUES ($1, $2, $3, $4)',
-    [newId, input.slug, input.name, input.description],
+    'INSERT INTO categories (id, slug, name, description, image_url, site) VALUES ($1, $2, $3, $4, $5, $6)',
+    [newId, input.slug, input.name, input.description, input.imageUrl || null, input.site || 'anahinails'],
   )
-  const rows = await sql.query('SELECT id, slug, name, description FROM categories WHERE id = $1', [newId])
+  const rows = await sql.query('SELECT id, slug, name, description, image_url, site FROM categories WHERE id = $1', [newId])
   return rows[0]
 }
 
@@ -737,8 +804,12 @@ export const handler: Handler = async (event) => {
     const method = event.httpMethod
 
     if (method === 'GET' && path === '/storefront') {
-      const categories = await listCategories()
-      const products = await listProducts(new URLSearchParams('sort=featured'))
+      const site = (url.searchParams.get('site') || 'anahinails').toLowerCase()
+      const storefrontParams = new URLSearchParams(url.searchParams)
+      storefrontParams.set('sort', storefrontParams.get('sort') || 'featured')
+      storefrontParams.set('site', site)
+      const categories = await listCategories(site)
+      const products = await listProducts(storefrontParams)
       return json(200, {
         categories,
         featuredProducts: products.slice(0, 4),
@@ -748,7 +819,7 @@ export const handler: Handler = async (event) => {
     }
 
     if (method === 'GET' && path === '/categories') {
-      return json(200, await listCategories())
+      return json(200, await listCategories(url.searchParams.get('site') || undefined))
     }
 
     if (method === 'GET' && path === '/products') {

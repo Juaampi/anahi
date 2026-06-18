@@ -6,13 +6,15 @@ import { ProductCard } from '../components/catalog/product-card'
 import { ProductFilters } from '../components/catalog/product-filters'
 import { useSEO } from '../hooks/use-seo'
 import { api } from '../lib/api'
+import type { StoreSite } from '../types'
 
-export function CatalogPage() {
-  useSEO({ title: 'Productos', description: 'Catalogo de esmaltes, nail art, herramientas y accesorios profesionales.' })
+export function CatalogPage({ site = 'anahinails' }: { site?: StoreSite }) {
+  useSEO({ title: 'Productos', description: 'Catalogo de productos filtrado por marca y listo para crecer con subcategorias y variantes.' })
   const [searchParams, setSearchParams] = useSearchParams()
   const [localFilters, setLocalFilters] = useState({
     search: searchParams.get('q') || '',
     category: searchParams.get('category') || '',
+    subcategory: searchParams.get('subcategory') || '',
     sort: searchParams.get('sort') || 'featured',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
@@ -20,13 +22,17 @@ export function CatalogPage() {
   })
 
   const categoryQuery = useQuery({
-    queryKey: ['categories'],
-    queryFn: api.categories,
+    queryKey: ['categories', site],
+    queryFn: () => api.categories(site),
   })
 
   const productQuery = useQuery({
-    queryKey: ['products', searchParams.toString()],
-    queryFn: () => api.products(searchParams),
+    queryKey: ['products', site, searchParams.toString()],
+    queryFn: () => {
+      const next = new URLSearchParams(searchParams)
+      next.set('site', site)
+      return api.products(next)
+    },
   })
 
   const handleChange = (field: string, value: string | boolean) => {
@@ -47,6 +53,13 @@ export function CatalogPage() {
     const count = productQuery.data?.length || 0
     return `${count} productos`
   }, [productQuery.data])
+  const subcategories = useMemo(
+    () =>
+      Array.from(
+        new Set((productQuery.data || []).map((item) => item.subcategory).filter(Boolean) as string[]),
+      ).sort((left, right) => left.localeCompare(right)),
+    [productQuery.data],
+  )
 
   return (
     <section className="bg-[#fff7f7] py-10">
@@ -63,6 +76,8 @@ export function CatalogPage() {
             <ProductFilters
               categories={categoryQuery.data || []}
               category={localFilters.category}
+              subcategory={localFilters.subcategory}
+              subcategories={subcategories}
               sort={localFilters.sort}
               minPrice={localFilters.minPrice}
               maxPrice={localFilters.maxPrice}

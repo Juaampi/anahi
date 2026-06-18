@@ -1,4 +1,13 @@
 export type ProductBadge = 'new' | 'sale' | 'best-seller'
+export type StoreSite = 'anahinails' | 'wildspirit'
+
+export interface ProductVariant {
+  id: string
+  name?: string
+  color: string
+  imageUrl?: string
+  stock: number
+}
 
 export interface Category {
   id: string
@@ -6,6 +15,7 @@ export interface Category {
   name: string
   description: string
   imageUrl?: string
+  site: StoreSite
 }
 
 export interface Product {
@@ -23,17 +33,23 @@ export interface Product {
   imageUrls: string[]
   categoryId: string
   categoryName: string
+  site: StoreSite
+  subcategory?: string
+  variants: ProductVariant[]
   createdAt?: string
 }
 
 export interface CartItem {
   product: Product
   quantity: number
+  selectedVariant?: ProductVariant | null
 }
 
 export interface OrderItemInput {
   productId: string
   productName?: string
+  variantId?: string
+  variantLabel?: string
   quantity: number
   unitPrice: number
 }

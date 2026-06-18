@@ -6,6 +6,7 @@ import type {
   DiscountCoupon,
   Order,
   Product,
+  StoreSite,
   StorefrontPayload,
 } from '../types'
 import { fallbackCategories, fallbackProducts, fallbackStorefront } from './fallback-data'
@@ -35,11 +36,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  storefront: async () => {
+  storefront: async (site: StoreSite) => {
     try {
-      return await request<StorefrontPayload>('/storefront')
+      return await request<StorefrontPayload>(`/storefront?site=${site}`)
     } catch {
-      return fallbackStorefront
+      return {
+        categories: fallbackStorefront.categories.filter((item) => item.site === site),
+        featuredProducts: fallbackProducts.filter((item) => item.site === site && item.featured).slice(0, 4),
+        bestSellers: fallbackProducts.filter((item) => item.site === site && item.badges.includes('best-seller')).slice(0, 4),
+        newArrivals: fallbackProducts.filter((item) => item.site === site && item.badges.includes('new')).slice(0, 4),
+      }
     }
   },
   products: async (filters: URLSearchParams) => {
@@ -92,11 +98,11 @@ export const api = {
       return found
     }
   },
-  categories: async () => {
+  categories: async (site?: StoreSite) => {
     try {
-      return await request<Category[]>('/categories')
+      return await request<Category[]>(site ? `/categories?site=${site}` : '/categories')
     } catch {
-      return fallbackCategories
+      return site ? fallbackCategories.filter((item) => item.site === site) : fallbackCategories
     }
   },
   login: (email: string, password: string) =>
