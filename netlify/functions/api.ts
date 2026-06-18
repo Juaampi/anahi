@@ -309,6 +309,21 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
     return payload
   }
 
+  if (!input.categoryId) {
+    throw new Error('Selecciona una categoria antes de guardar el producto.')
+  }
+
+  const categoryRows = await sql.query('SELECT id, name, site FROM categories WHERE id = $1 LIMIT 1', [input.categoryId])
+  const category = categoryRows[0]
+
+  if (!category) {
+    throw new Error('La categoria seleccionada no existe.')
+  }
+
+  if (input.site && category.site !== input.site) {
+    throw new Error('La categoria elegida no pertenece al sitio seleccionado.')
+  }
+
   if (id) {
     await sql.query(
       `UPDATE products
@@ -329,7 +344,7 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
         JSON.stringify(input.imageUrls || []),
         JSON.stringify(normalizedVariants),
         input.subcategory || null,
-        input.site || 'anahinails',
+        input.site || category.site || 'anahinails',
         input.categoryId,
         id,
       ],
@@ -357,7 +372,7 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
       JSON.stringify(input.imageUrls || []),
       JSON.stringify(normalizedVariants),
       input.subcategory || null,
-      input.site || 'anahinails',
+      input.site || category.site || 'anahinails',
       input.categoryId,
     ],
   )

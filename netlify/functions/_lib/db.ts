@@ -119,14 +119,20 @@ export async function ensureDatabase() {
     await sql.query(statement)
   }
 
-  const categoryCount = await sql.query('SELECT COUNT(*)::int AS count FROM categories')
-  if ((categoryCount[0]?.count || 0) === 0) {
-    for (const category of seedCategories) {
+  for (const category of seedCategories) {
+    const existingCategory = await sql.query('SELECT id FROM categories WHERE id = $1 LIMIT 1', [category.id])
+    if (existingCategory[0]?.id) {
       await sql.query(
-        'INSERT INTO categories (id, slug, name, description, site) VALUES ($1, $2, $3, $4, $5)',
-        [category.id, category.slug, category.name, category.description, category.site],
+        'UPDATE categories SET slug = $1, name = $2, description = $3, site = $4 WHERE id = $5',
+        [category.slug, category.name, category.description, category.site, category.id],
       )
+      continue
     }
+
+    await sql.query(
+      'INSERT INTO categories (id, slug, name, description, site) VALUES ($1, $2, $3, $4, $5)',
+      [category.id, category.slug, category.name, category.description, category.site],
+    )
   }
 
   const productCount = await sql.query('SELECT COUNT(*)::int AS count FROM products')
