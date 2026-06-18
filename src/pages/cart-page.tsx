@@ -1,7 +1,9 @@
 import { Minus, Plus, Trash2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { SmartImage } from '../components/ui/smart-image'
 import { useSEO } from '../hooks/use-seo'
+import { api } from '../lib/api'
 import { getProductFallbackImage } from '../lib/constants'
 import { formatCurrency } from '../lib/utils'
 import { useCartStore } from '../store/cart-store'
@@ -14,6 +16,10 @@ export function CartPage() {
   useSEO({ title: 'Carrito' })
   const { items, removeItem, updateQuantity } = useCartStore()
   const subtotal = items.reduce((acc, item) => acc + item.product.price * item.quantity, 0)
+  const settingsQuery = useQuery({
+    queryKey: ['store-settings'],
+    queryFn: () => api.settings(),
+  })
 
   return (
     <section className="bg-transparent py-12">
@@ -223,7 +229,11 @@ export function CartPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span>Envio</span>
-                <span>Se calcula al finalizar</span>
+                <span>
+                  {settingsQuery.data?.freeShippingEnabled
+                    ? `Gratis desde ${formatCurrency(settingsQuery.data.freeShippingThreshold)}`
+                    : formatCurrency(settingsQuery.data?.standardShippingCost || 0)}
+                </span>
               </div>
               <div className="border-t border-[var(--color-border)] pt-4">
                 <div className="flex items-center justify-between">

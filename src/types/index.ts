@@ -65,6 +65,9 @@ export interface CheckoutInput {
   notes?: string
   sendWhatsAppSummary?: boolean
   couponCode?: string
+  shippingMethod?: 'delivery' | 'branch'
+  shippingCost?: number
+  shippingLabel?: string
   items: OrderItemInput[]
 }
 
@@ -74,6 +77,9 @@ export interface Order extends CheckoutInput {
   status: 'pending' | 'paid' | 'packing' | 'shipped' | 'cancelled'
   subtotal: number
   discountAmount: number
+  shippingMethod: 'delivery' | 'branch'
+  shippingCost: number
+  shippingLabel?: string
   total: number
   couponId?: string | null
   createdAt: string
@@ -127,4 +133,15 @@ export interface CouponValidation {
   subtotal: number
   discountAmount: number
   total: number
+}
+
+export interface StoreSettings {
+  id: string
+  standardShippingLabel: string
+  standardShippingCost: number
+  branchShippingEnabled: boolean
+  branchShippingLabel: string
+  branchShippingCost: number
+  freeShippingEnabled: boolean
+  freeShippingThreshold: number
 }

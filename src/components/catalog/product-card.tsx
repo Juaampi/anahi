@@ -12,6 +12,12 @@ const badgeLabels = {
   'best-seller': 'Tendencia',
 }
 
+function getStockLabel(stock: number) {
+  if (stock <= 0) return 'Sin stock'
+  if (stock <= 4) return `Quedan ${stock}`
+  return 'Disponible'
+}
+
 export function ProductCard({ product }: { product: Product }) {
   const addItem = useCartStore((state) => state.addItem)
   const firstBadge = product.badges[0]
@@ -74,7 +80,7 @@ export function ProductCard({ product }: { product: Product }) {
           </span>
           {!hasDiscount ? (
             <span className="rounded-md bg-[#eef0ff] px-3 py-1 text-sm font-bold text-[#7c73ff]">
-              Stock {product.stock}
+              {getStockLabel(product.stock)}
             </span>
           ) : null}
         </div>

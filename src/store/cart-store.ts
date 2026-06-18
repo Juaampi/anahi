@@ -38,7 +38,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     const current = get().items
     const itemKey = getItemKey(product.id, selectedVariant?.id)
     const existing = current.find((item) => getItemKey(item.product.id, item.selectedVariant?.id) === itemKey)
-    const limit = selectedVariant?.stock || product.stock || 99
+    const limit = selectedVariant?.stock ?? product.stock ?? 99
     const items = existing
       ? current.map((item) =>
           getItemKey(item.product.id, item.selectedVariant?.id) === itemKey
@@ -62,7 +62,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         getItemKey(item.product.id, item.selectedVariant?.id) === itemKey
           ? {
               ...item,
-              quantity: Math.max(1, Math.min(quantity, item.selectedVariant?.stock || item.product.stock || 99)),
+              quantity: Math.max(1, Math.min(quantity, item.selectedVariant?.stock ?? item.product.stock ?? 99)),
             }
           : item,
       )

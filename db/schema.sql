@@ -52,6 +52,9 @@ CREATE TABLE IF NOT EXISTS orders (
   coupon_code TEXT,
   subtotal NUMERIC(12,2) NOT NULL,
   discount_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  shipping_method TEXT NOT NULL DEFAULT 'delivery',
+  shipping_label TEXT,
+  shipping_cost NUMERIC(12,2) NOT NULL DEFAULT 0,
   total NUMERIC(12,2) NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -78,4 +81,16 @@ CREATE TABLE IF NOT EXISTS detail_pedido (
   product_id TEXT NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
   quantity INTEGER NOT NULL,
   unit_price NUMERIC(12,2) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS store_settings (
+  id TEXT PRIMARY KEY,
+  standard_shipping_label TEXT NOT NULL DEFAULT 'Envio a domicilio',
+  standard_shipping_cost NUMERIC(12,2) NOT NULL DEFAULT 0,
+  branch_shipping_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  branch_shipping_label TEXT NOT NULL DEFAULT 'Envio a sucursal',
+  branch_shipping_cost NUMERIC(12,2) NOT NULL DEFAULT 0,
+  free_shipping_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  free_shipping_threshold NUMERIC(12,2) NOT NULL DEFAULT 250000,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );

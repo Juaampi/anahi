@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useSEO } from '../hooks/use-seo'
 import { api } from '../lib/api'
@@ -20,19 +20,32 @@ export function CheckoutPage() {
     notes: '',
     sendWhatsAppSummary: true,
     couponCode: '',
+    shippingMethod: 'delivery' as 'delivery' | 'branch',
   })
   const [orderFeedback, setOrderFeedback] = useState('')
   const [couponFeedback, setCouponFeedback] = useState('')
   const [couponResult, setCouponResult] = useState<CouponValidation | null>(null)
+
+  const settingsQuery = useQuery({
+    queryKey: ['store-settings'],
+    queryFn: () => api.settings(),
+  })
 
   const subtotal = useMemo(
     () => items.reduce((acc, item) => acc + item.product.price * item.quantity, 0),
     [items],
   )
 
+  const settings = settingsQuery.data
+
   const payload = {
     ...form,
     couponCode: couponResult?.valid ? couponResult.coupon?.code : undefined,
+    shippingLabel:
+      form.shippingMethod === 'branch'
+        ? settings?.branchShippingLabel
+        : settings?.standardShippingLabel,
+    shippingCost: 0,
     items: items.map((item) => ({
       productId: item.product.id,
       productName: `${item.product.name}${item.selectedVariant ? ` - ${item.selectedVariant.name || item.selectedVariant.color}` : ''}`,
@@ -87,7 +100,25 @@ export function CheckoutPage() {
   })
 
   const discountAmount = couponResult?.valid ? couponResult.discountAmount : 0
-  const total = couponResult?.valid ? couponResult.total : subtotal
+  const subtotalAfterDiscount = couponResult?.valid ? couponResult.total : subtotal
+  const qualifiesForFreeShipping = Boolean(
+    settings?.freeShippingEnabled && form.shippingMethod === 'delivery' && subtotalAfterDiscount >= settings.freeShippingThreshold,
+  )
+  const shippingCost =
+    form.shippingMethod === 'branch'
+      ? settings?.branchShippingCost || 0
+      : qualifiesForFreeShipping
+        ? 0
+        : settings?.standardShippingCost || 0
+  const total = subtotalAfterDiscount + shippingCost
+  const shippingLabel =
+    form.shippingMethod === 'branch'
+      ? settings?.branchShippingLabel || 'Envio a sucursal'
+      : qualifiesForFreeShipping
+        ? settings?.freeShippingThreshold
+          ? `Envio gratis desde ${formatCurrency(settings.freeShippingThreshold)}`
+          : 'Envio gratis'
+        : settings?.standardShippingLabel || 'Envio a domicilio'
 
   return (
     <section className="bg-transparent py-12">
@@ -126,6 +157,50 @@ export function CheckoutPage() {
                   />
                 </label>
               ))}
+              <label className="md:col-span-2">
+                <span className="mb-2 block text-sm font-medium text-[var(--color-primary)]">Forma de envío</span>
+                <div className="grid gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setForm((current) => ({ ...current, shippingMethod: 'delivery' }))}
+                    className={`rounded-[1.5rem] border px-4 py-4 text-left transition ${
+                      form.shippingMethod === 'delivery'
+                        ? 'border-[var(--color-primary)] bg-[#fff7f4]'
+                        : 'border-[var(--color-border)] bg-[var(--color-surface)]'
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold text-[var(--color-primary)]">
+                      {settings?.standardShippingLabel || 'Envío a domicilio'}
+                    </span>
+                    <span className="mt-1 block text-sm text-[var(--color-muted)]">
+                      {qualifiesForFreeShipping ? 'Gratis para este pedido.' : formatCurrency(settings?.standardShippingCost || 0)}
+                    </span>
+                  </button>
+                  {settings?.branchShippingEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => setForm((current) => ({ ...current, shippingMethod: 'branch' }))}
+                      className={`rounded-[1.5rem] border px-4 py-4 text-left transition ${
+                        form.shippingMethod === 'branch'
+                          ? 'border-[var(--color-primary)] bg-[#fff7f4]'
+                          : 'border-[var(--color-border)] bg-[var(--color-surface)]'
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold text-[var(--color-primary)]">
+                        {settings.branchShippingLabel}
+                      </span>
+                      <span className="mt-1 block text-sm text-[var(--color-muted)]">
+                        {formatCurrency(settings.branchShippingCost)}
+                      </span>
+                    </button>
+                  ) : null}
+                </div>
+                {settings?.freeShippingEnabled ? (
+                  <p className="mt-2 text-sm text-emerald-700">
+                    Envío gratis automático a partir de {formatCurrency(settings.freeShippingThreshold)}.
+                  </p>
+                ) : null}
+              </label>
               <label className="md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-[var(--color-primary)]">Cupon de descuento</span>
                 <div className="flex flex-col gap-3 sm:flex-row">
@@ -217,6 +292,10 @@ export function CheckoutPage() {
                   <span>-{formatCurrency(discountAmount)}</span>
                 </div>
               ) : null}
+              <div className="mt-3 flex items-center justify-between text-sm text-[var(--color-muted)]">
+                <span>{shippingLabel}</span>
+                <span>{shippingCost === 0 ? 'Gratis' : formatCurrency(shippingCost)}</span>
+              </div>
               <div className="mt-4 flex items-center justify-between font-display text-lg font-semibold text-[var(--color-primary)]">
                 <span>Total</span>
                 <span>{formatCurrency(total)}</span>

@@ -6,10 +6,11 @@ import type {
   DiscountCoupon,
   Order,
   Product,
+  StoreSettings,
   StoreSite,
   StorefrontPayload,
 } from '../types'
-import { fallbackCategories, fallbackProducts, fallbackStorefront } from './fallback-data'
+import { fallbackCategories, fallbackProducts, fallbackSettings, fallbackStorefront } from './fallback-data'
 
 const API_BASE = '/.netlify/functions/api'
 
@@ -105,6 +106,13 @@ export const api = {
       return site ? fallbackCategories.filter((item) => item.site === site) : fallbackCategories
     }
   },
+  settings: async () => {
+    try {
+      return await request<StoreSettings>('/settings')
+    } catch {
+      return fallbackSettings
+    }
+  },
   login: (email: string, password: string) =>
     request<{ token: string; user: AdminUser }>('/admin/login', {
       method: 'POST',
@@ -165,6 +173,16 @@ export const api = {
   adminCoupons: (token: string) =>
     request<DiscountCoupon[]>('/admin/coupons', {
       headers: { Authorization: `Bearer ${token}` },
+    }),
+  adminSettings: (token: string) =>
+    request<StoreSettings>('/admin/settings', {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  saveSettings: (token: string, settings: Partial<StoreSettings>) =>
+    request<StoreSettings>('/admin/settings', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(settings),
     }),
   saveCoupon: (token: string, coupon: Partial<DiscountCoupon>) =>
     request<DiscountCoupon>('/admin/coupons', {

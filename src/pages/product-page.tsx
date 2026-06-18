@@ -15,7 +15,7 @@ import { SmartImage } from '../components/ui/smart-image'
 import { useSEO } from '../hooks/use-seo'
 import { api } from '../lib/api'
 import { getProductFallbackImage } from '../lib/constants'
-import { buildStorePath, buildWhatsAppLink, formatCurrency } from '../lib/utils'
+import { buildStorePath, buildWhatsAppLink, cn, formatCurrency } from '../lib/utils'
 import { useCartStore } from '../store/cart-store'
 import type { StoreSite } from '../types'
 
@@ -28,6 +28,12 @@ function getVariantSwatchColor(color: string) {
   if (normalized.includes('beige') || normalized.includes('arena') || normalized.includes('stone')) return '#c8b39a'
   if (normalized.includes('bord') || normalized.includes('cherry')) return '#8a284f'
   return '#9bbec8'
+}
+
+function getStockMessage(stock: number) {
+  if (stock <= 0) return 'Sin stock'
+  if (stock <= 4) return `Ultimas ${stock} unidades`
+  return 'Disponible para entrega'
 }
 
 export function ProductPage({ site }: { site?: StoreSite }) {
@@ -69,7 +75,7 @@ export function ProductPage({ site }: { site?: StoreSite }) {
     product.variants.find((variant) => variant.id === selectedVariantId) ||
     product.variants[0] ||
     null
-  const variantStock = selectedVariant?.stock || product.stock
+  const variantStock = selectedVariant?.stock ?? product.stock
   const primaryImage = selectedVariant?.imageUrl || product.imageUrls[0]
 
   const galleryImages = [primaryImage, ...product.imageUrls.filter((image) => image !== primaryImage)]
@@ -155,7 +161,7 @@ export function ProductPage({ site }: { site?: StoreSite }) {
               ) : null}
             </div>
             <div className="inline-flex rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-primary)]">
-              Stock disponible: {variantStock}
+              {getStockMessage(variantStock)}
             </div>
             {product.variants.length > 0 ? (
               <div className="space-y-3 rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
@@ -186,7 +192,7 @@ export function ProductPage({ site }: { site?: StoreSite }) {
                             {variant.name || variant.color}
                           </span>
                           <span className="block text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">
-                            {variant.color} · {variant.stock} disponibles
+                            {variant.color} · {getStockMessage(variant.stock)}
                           </span>
                         </span>
                       </button>
@@ -198,6 +204,7 @@ export function ProductPage({ site }: { site?: StoreSite }) {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="inline-flex items-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]">
                 <button
+                  type="button"
                   className="px-4 py-3 text-[var(--color-primary)]"
                   onClick={() => setQuantity((value) => Math.max(1, value - 1))}
                 >
@@ -205,6 +212,7 @@ export function ProductPage({ site }: { site?: StoreSite }) {
                 </button>
                 <span className="min-w-12 text-center text-sm font-semibold">{quantity}</span>
                 <button
+                  type="button"
                   className="px-4 py-3 text-[var(--color-primary)]"
                   onClick={() => setQuantity((value) => Math.min(variantStock, value + 1))}
                 >
@@ -212,16 +220,27 @@ export function ProductPage({ site }: { site?: StoreSite }) {
                 </button>
               </div>
               <button
+                type="button"
+                disabled={variantStock <= 0}
                 onClick={() => addItem(product, quantity, selectedVariant)}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-4 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(17,24,39,0.14)]"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-4 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(17,24,39,0.14)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ShoppingBag size={17} />
                 Agregar al carrito
               </button>
               <Link
                 to="/checkout"
-                onClick={() => addItem(product, quantity, selectedVariant)}
-                className="inline-flex items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-4 text-sm font-semibold text-[var(--color-primary)]"
+                onClick={(event) => {
+                  if (variantStock <= 0) {
+                    event.preventDefault()
+                    return
+                  }
+                  addItem(product, quantity, selectedVariant)
+                }}
+                className={cn(
+                  'inline-flex items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-4 text-sm font-semibold text-[var(--color-primary)]',
+                  variantStock <= 0 ? 'pointer-events-none opacity-50' : '',
+                )}
               >
                 Comprar ahora
               </Link>

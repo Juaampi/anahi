@@ -1,4 +1,4 @@
-import type { Category, Product, StorefrontPayload } from '../types'
+import type { Category, Product, StoreSettings, StorefrontPayload } from '../types'
 import { categoryImageMap } from './constants'
 
 export const fallbackCategories: Category[] = [
@@ -394,4 +394,15 @@ export const fallbackStorefront: StorefrontPayload = {
   featuredProducts: fallbackProducts.filter((item) => item.site === 'anahinails'),
   bestSellers: fallbackProducts.filter((item) => item.badges.includes('best-seller')).slice(0, 4),
   newArrivals: fallbackProducts.filter((item) => item.badges.includes('new')).slice(0, 4),
+}
+
+export const fallbackSettings: StoreSettings = {
+  id: 'main',
+  standardShippingLabel: 'Envío a domicilio',
+  standardShippingCost: 0,
+  branchShippingEnabled: true,
+  branchShippingLabel: 'Envío a sucursal',
+  branchShippingCost: 0,
+  freeShippingEnabled: true,
+  freeShippingThreshold: 250000,
 }

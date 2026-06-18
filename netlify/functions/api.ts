@@ -45,6 +45,16 @@ type CouponInput = {
   usageLimit?: number | null
 }
 
+type SettingsInput = {
+  standardShippingLabel?: string
+  standardShippingCost?: number
+  branchShippingEnabled?: boolean
+  branchShippingLabel?: string
+  branchShippingCost?: number
+  freeShippingEnabled?: boolean
+  freeShippingThreshold?: number
+}
+
 type DataRow = Record<string, unknown>
 type OrderPayload = {
   customerName: string
@@ -57,6 +67,9 @@ type OrderPayload = {
   notes?: string
   sendWhatsAppSummary?: boolean
   couponCode?: string
+  shippingMethod?: 'delivery' | 'branch'
+  shippingCost?: number
+  shippingLabel?: string
   items: Array<{ productId: string; productName?: string; quantity: number; unitPrice: number }>
 }
 
@@ -157,6 +170,19 @@ function normalizeCoupon(row: DataRow) {
   }
 }
 
+function normalizeSettings(row: DataRow) {
+  return {
+    id: String(row.id || 'main'),
+    standardShippingLabel: String(row.standard_shipping_label ?? row.standardShippingLabel ?? 'Envio a domicilio'),
+    standardShippingCost: Number(row.standard_shipping_cost ?? row.standardShippingCost ?? 0),
+    branchShippingEnabled: Boolean(row.branch_shipping_enabled ?? row.branchShippingEnabled ?? true),
+    branchShippingLabel: String(row.branch_shipping_label ?? row.branchShippingLabel ?? 'Envio a sucursal'),
+    branchShippingCost: Number(row.branch_shipping_cost ?? row.branchShippingCost ?? 0),
+    freeShippingEnabled: Boolean(row.free_shipping_enabled ?? row.freeShippingEnabled ?? true),
+    freeShippingThreshold: Number(row.free_shipping_threshold ?? row.freeShippingThreshold ?? 250000),
+  }
+}
+
 function sortProducts(items: Array<Record<string, unknown> & { price: number; featured: boolean }>, sort: string) {
   const clone = [...items]
   if (sort === 'price-asc') return clone.sort((a, b) => a.price - b.price)
@@ -184,6 +210,67 @@ async function listCoupons() {
   if (!sql) return getMemoryState().coupons.map(normalizeCoupon)
   const rows = await sql.query('SELECT * FROM discount_coupons ORDER BY created_at DESC, code ASC')
   return rows.map(normalizeCoupon)
+}
+
+async function getStoreSettings() {
+  const sql = await ensureDatabase()
+  if (!sql) return normalizeSettings(getMemoryState().settings)
+  const rows = await sql.query('SELECT * FROM store_settings WHERE id = $1 LIMIT 1', ['main'])
+  if (!rows[0]) {
+    return normalizeSettings({
+      id: 'main',
+      standard_shipping_label: 'Envio a domicilio',
+      standard_shipping_cost: 0,
+      branch_shipping_enabled: true,
+      branch_shipping_label: 'Envio a sucursal',
+      branch_shipping_cost: 0,
+      free_shipping_enabled: true,
+      free_shipping_threshold: 250000,
+    })
+  }
+  return normalizeSettings(rows[0])
+}
+
+async function saveStoreSettings(input: SettingsInput) {
+  const sql = await ensureDatabase()
+  const current = await getStoreSettings()
+  const payload = normalizeSettings({
+    ...current,
+    ...input,
+    id: 'main',
+  })
+
+  if (!sql) {
+    Object.assign(getMemoryState().settings, payload)
+    return payload
+  }
+
+  await sql.query(
+    `INSERT INTO store_settings
+      (id, standard_shipping_label, standard_shipping_cost, branch_shipping_enabled, branch_shipping_label, branch_shipping_cost, free_shipping_enabled, free_shipping_threshold, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+     ON CONFLICT (id) DO UPDATE
+     SET standard_shipping_label = EXCLUDED.standard_shipping_label,
+         standard_shipping_cost = EXCLUDED.standard_shipping_cost,
+         branch_shipping_enabled = EXCLUDED.branch_shipping_enabled,
+         branch_shipping_label = EXCLUDED.branch_shipping_label,
+         branch_shipping_cost = EXCLUDED.branch_shipping_cost,
+         free_shipping_enabled = EXCLUDED.free_shipping_enabled,
+         free_shipping_threshold = EXCLUDED.free_shipping_threshold,
+         updated_at = NOW()`,
+    [
+      'main',
+      payload.standardShippingLabel,
+      payload.standardShippingCost,
+      payload.branchShippingEnabled,
+      payload.branchShippingLabel,
+      payload.branchShippingCost,
+      payload.freeShippingEnabled,
+      payload.freeShippingThreshold,
+    ],
+  )
+
+  return getStoreSettings()
 }
 
 async function listProducts(searchParams: URLSearchParams) {
@@ -595,6 +682,26 @@ async function validateCoupon(code: string | undefined, subtotal: number) {
   }
 }
 
+function resolveShippingCost(
+  shippingMethod: OrderPayload['shippingMethod'],
+  discountedSubtotal: number,
+  settings: Awaited<ReturnType<typeof getStoreSettings>>,
+) {
+  const method = shippingMethod === 'branch' && settings.branchShippingEnabled ? 'branch' : 'delivery'
+  const baseCost = method === 'branch' ? settings.branchShippingCost : settings.standardShippingCost
+  const label = method === 'branch' ? settings.branchShippingLabel : settings.standardShippingLabel
+  const qualifiesForFreeShipping =
+    method === 'delivery' &&
+    settings.freeShippingEnabled &&
+    discountedSubtotal >= settings.freeShippingThreshold
+
+  return {
+    shippingMethod: method,
+    shippingLabel: qualifiesForFreeShipping ? `Envio gratis desde ${settings.freeShippingThreshold}` : label,
+    shippingCost: qualifiesForFreeShipping ? 0 : roundMoney(baseCost),
+  }
+}
+
 function buildPreferenceItems(
   items: OrderPayload['items'],
   subtotal: number,
@@ -620,6 +727,7 @@ function buildPreferenceItems(
 async function createOrder(body: OrderPayload) {
   const sql = await ensureDatabase()
   const subtotal = roundMoney(body.items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0))
+  const settings = await getStoreSettings()
   const couponValidation = body.couponCode
     ? await validateCoupon(body.couponCode, subtotal)
     : { valid: false, subtotal, discountAmount: 0, total: subtotal }
@@ -628,16 +736,21 @@ async function createOrder(body: OrderPayload) {
     throw new Error(couponValidation.message || 'No se pudo aplicar el cupon.')
   }
 
+  const shipping = resolveShippingCost(body.shippingMethod, couponValidation.total, settings)
+
   const order = {
     id: createId('order'),
     orderNumber: createOrderNumber(),
     ...body,
+    shippingMethod: shipping.shippingMethod,
+    shippingLabel: body.shippingLabel || shipping.shippingLabel,
+    shippingCost: shipping.shippingCost,
     couponCode: couponValidation.valid ? couponValidation.coupon?.code : undefined,
     couponId: couponValidation.valid ? couponValidation.coupon?.id : undefined,
     status: 'pending',
     subtotal,
     discountAmount: couponValidation.discountAmount,
-    total: couponValidation.total,
+    total: roundMoney(couponValidation.total + shipping.shippingCost),
     createdAt: new Date().toISOString(),
   }
 
@@ -651,8 +764,8 @@ async function createOrder(body: OrderPayload) {
 
   await sql.query(
     `INSERT INTO orders
-      (id, order_number, customer_name, email, phone, address, city, province, postal_code, notes, send_whatsapp_summary, coupon_id, coupon_code, subtotal, discount_amount, total, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+      (id, order_number, customer_name, email, phone, address, city, province, postal_code, notes, send_whatsapp_summary, coupon_id, coupon_code, subtotal, discount_amount, shipping_method, shipping_label, shipping_cost, total, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
     [
       order.id,
       order.orderNumber,
@@ -669,6 +782,9 @@ async function createOrder(body: OrderPayload) {
       order.couponCode || null,
       order.subtotal,
       order.discountAmount,
+      order.shippingMethod,
+      order.shippingLabel || null,
+      order.shippingCost,
       order.total,
       order.status,
     ],
@@ -693,7 +809,7 @@ async function listOrders() {
   if (!sql) return getMemoryState().orders
   const rows = await sql.query(
     `SELECT id, order_number, customer_name, email, phone, address, city, province, postal_code, notes,
-            send_whatsapp_summary, coupon_id, coupon_code, subtotal, discount_amount, total, status, created_at
+            send_whatsapp_summary, coupon_id, coupon_code, subtotal, discount_amount, shipping_method, shipping_label, shipping_cost, total, status, created_at
      FROM orders
      ORDER BY created_at DESC`,
   )
@@ -713,6 +829,9 @@ async function listOrders() {
     couponCode: row.coupon_code,
     subtotal: Number(row.subtotal),
     discountAmount: Number(row.discount_amount || 0),
+    shippingMethod: row.shipping_method || 'delivery',
+    shippingLabel: row.shipping_label || undefined,
+    shippingCost: Number(row.shipping_cost || 0),
     total: Number(row.total),
     status: row.status,
     createdAt: row.created_at,
@@ -729,7 +848,7 @@ async function updateOrderStatus(id: string, status: string) {
   }
   await sql.query('UPDATE orders SET status = $1 WHERE id = $2', [status, id])
   const rows = await sql.query(
-    'SELECT id, order_number, customer_name, email, phone, address, city, province, postal_code, notes, send_whatsapp_summary, coupon_id, coupon_code, subtotal, discount_amount, total, status, created_at FROM orders WHERE id = $1',
+    'SELECT id, order_number, customer_name, email, phone, address, city, province, postal_code, notes, send_whatsapp_summary, coupon_id, coupon_code, subtotal, discount_amount, shipping_method, shipping_label, shipping_cost, total, status, created_at FROM orders WHERE id = $1',
     [id],
   )
   const row = rows[0]
@@ -749,6 +868,9 @@ async function updateOrderStatus(id: string, status: string) {
     couponCode: row.coupon_code,
     subtotal: Number(row.subtotal),
     discountAmount: Number(row.discount_amount || 0),
+    shippingMethod: row.shipping_method || 'delivery',
+    shippingLabel: row.shipping_label || undefined,
+    shippingCost: Number(row.shipping_cost || 0),
     total: Number(row.total),
     status: row.status,
     createdAt: row.created_at,
@@ -757,6 +879,7 @@ async function updateOrderStatus(id: string, status: string) {
 
 async function generateMercadoPagoPreference(body: OrderPayload) {
   const subtotal = roundMoney(body.items.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0))
+  const settings = await getStoreSettings()
   const couponValidation = body.couponCode
     ? await validateCoupon(body.couponCode, subtotal)
     : { valid: false, subtotal, discountAmount: 0, total: subtotal }
@@ -764,6 +887,8 @@ async function generateMercadoPagoPreference(body: OrderPayload) {
   if (body.couponCode && !couponValidation.valid) {
     throw new Error(couponValidation.message || 'No se pudo aplicar el cupon.')
   }
+
+  const shipping = resolveShippingCost(body.shippingMethod, couponValidation.total, settings)
 
   if (!process.env.MERCADOPAGO_ACCESS_TOKEN) {
     return { preferenceId: 'pending-config', initPoint: '', sandboxInitPoint: '' }
@@ -775,10 +900,22 @@ async function generateMercadoPagoPreference(body: OrderPayload) {
   })
   const preference = new Preference(client)
   const pricedItems = buildPreferenceItems(body.items, subtotal, couponValidation.discountAmount)
+  const mpItems =
+    shipping.shippingCost > 0
+      ? [
+          ...pricedItems,
+          {
+            productId: 'shipping',
+            productName: shipping.shippingLabel,
+            quantity: 1,
+            unitPrice: shipping.shippingCost,
+          },
+        ]
+      : pricedItems
 
   const result = await preference.create({
     body: {
-      items: pricedItems.map((item, index) => ({
+      items: mpItems.map((item, index) => ({
         id: item.productId || `item-${index}`,
         title: item.productName || `Producto ${index + 1}`,
         quantity: item.quantity,
@@ -839,6 +976,10 @@ export const handler: Handler = async (event) => {
 
     if (method === 'GET' && path === '/products') {
       return json(200, await listProducts(url.searchParams))
+    }
+
+    if (method === 'GET' && path === '/settings') {
+      return json(200, await getStoreSettings())
     }
 
     if (method === 'GET' && path.startsWith('/products/')) {
@@ -903,6 +1044,12 @@ export const handler: Handler = async (event) => {
 
     if (method === 'GET' && path === '/admin/coupons') {
       return json(200, await listCoupons())
+    }
+    if (method === 'GET' && path === '/admin/settings') {
+      return json(200, await getStoreSettings())
+    }
+    if (method === 'PUT' && path === '/admin/settings') {
+      return json(200, await saveStoreSettings(parseBody(event.body)))
     }
     if (method === 'POST' && path === '/admin/coupons') {
       return json(200, await createOrUpdateCoupon(parseBody(event.body)))

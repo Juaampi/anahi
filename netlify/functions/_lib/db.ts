@@ -11,6 +11,16 @@ const memoryState = {
   products: structuredClone(seedProducts),
   orders: [] as MemoryOrder[],
   coupons: [] as Record<string, unknown>[],
+  settings: {
+    id: 'main',
+    standardShippingLabel: 'Envio a domicilio',
+    standardShippingCost: 0,
+    branchShippingEnabled: true,
+    branchShippingLabel: 'Envio a sucursal',
+    branchShippingCost: 0,
+    freeShippingEnabled: true,
+    freeShippingThreshold: 250000,
+  },
   admin: {
     id: 'admin-seed',
     email: process.env.ADMIN_SEED_EMAIL || 'admin@anahinailsdiamond.com',
@@ -81,6 +91,9 @@ export async function ensureDatabase() {
       coupon_code TEXT,
       subtotal NUMERIC(12,2) NOT NULL,
       discount_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+      shipping_method TEXT NOT NULL DEFAULT 'delivery',
+      shipping_label TEXT,
+      shipping_cost NUMERIC(12,2) NOT NULL DEFAULT 0,
       total NUMERIC(12,2) NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending',
       created_at TIMESTAMPTZ DEFAULT NOW()
@@ -106,9 +119,23 @@ export async function ensureDatabase() {
       quantity INTEGER NOT NULL,
       unit_price NUMERIC(12,2) NOT NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS store_settings (
+      id TEXT PRIMARY KEY,
+      standard_shipping_label TEXT NOT NULL DEFAULT 'Envio a domicilio',
+      standard_shipping_cost NUMERIC(12,2) NOT NULL DEFAULT 0,
+      branch_shipping_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      branch_shipping_label TEXT NOT NULL DEFAULT 'Envio a sucursal',
+      branch_shipping_cost NUMERIC(12,2) NOT NULL DEFAULT 0,
+      free_shipping_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      free_shipping_threshold NUMERIC(12,2) NOT NULL DEFAULT 250000,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
     'ALTER TABLE orders ADD COLUMN IF NOT EXISTS coupon_id TEXT',
     'ALTER TABLE orders ADD COLUMN IF NOT EXISTS coupon_code TEXT',
     "ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(12,2) NOT NULL DEFAULT 0",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_method TEXT NOT NULL DEFAULT 'delivery'",
+    'ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_label TEXT',
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_cost NUMERIC(12,2) NOT NULL DEFAULT 0",
     "ALTER TABLE categories ADD COLUMN IF NOT EXISTS site TEXT NOT NULL DEFAULT 'anahinails'",
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS variants JSONB NOT NULL DEFAULT '[]'::jsonb",
     'ALTER TABLE products ADD COLUMN IF NOT EXISTS subcategory TEXT',
@@ -180,6 +207,43 @@ export async function ensureDatabase() {
     await sql.query(
       'INSERT INTO users_admin (id, name, email, password_hash) VALUES ($1, $2, $3, $4)',
       ['admin-seed', seedName, seedEmail, seedHash],
+    )
+  }
+
+  const existingSettings = await sql.query('SELECT id FROM store_settings WHERE id = $1 LIMIT 1', ['main'])
+  if (existingSettings[0]?.id) {
+    await sql.query(
+      `UPDATE store_settings
+       SET standard_shipping_label = $1, standard_shipping_cost = $2, branch_shipping_enabled = $3,
+           branch_shipping_label = $4, branch_shipping_cost = $5, free_shipping_enabled = $6,
+           free_shipping_threshold = $7, updated_at = NOW()
+       WHERE id = $8`,
+      [
+        memoryState.settings.standardShippingLabel,
+        memoryState.settings.standardShippingCost,
+        memoryState.settings.branchShippingEnabled,
+        memoryState.settings.branchShippingLabel,
+        memoryState.settings.branchShippingCost,
+        memoryState.settings.freeShippingEnabled,
+        memoryState.settings.freeShippingThreshold,
+        'main',
+      ],
+    )
+  } else {
+    await sql.query(
+      `INSERT INTO store_settings
+        (id, standard_shipping_label, standard_shipping_cost, branch_shipping_enabled, branch_shipping_label, branch_shipping_cost, free_shipping_enabled, free_shipping_threshold)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        'main',
+        memoryState.settings.standardShippingLabel,
+        memoryState.settings.standardShippingCost,
+        memoryState.settings.branchShippingEnabled,
+        memoryState.settings.branchShippingLabel,
+        memoryState.settings.branchShippingCost,
+        memoryState.settings.freeShippingEnabled,
+        memoryState.settings.freeShippingThreshold,
+      ],
     )
   }
 
