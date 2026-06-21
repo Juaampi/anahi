@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS categories (
   description TEXT NOT NULL,
   image_url TEXT,
   site TEXT NOT NULL DEFAULT 'anahinails',
+  subcategories JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

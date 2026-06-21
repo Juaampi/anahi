@@ -47,6 +47,7 @@ export async function ensureDatabase() {
       description TEXT NOT NULL,
       image_url TEXT,
       site TEXT NOT NULL DEFAULT 'anahinails',
+      subcategories JSONB NOT NULL DEFAULT '[]'::jsonb,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`,
     `CREATE TABLE IF NOT EXISTS products (
@@ -137,6 +138,7 @@ export async function ensureDatabase() {
     'ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_label TEXT',
     "ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_cost NUMERIC(12,2) NOT NULL DEFAULT 0",
     "ALTER TABLE categories ADD COLUMN IF NOT EXISTS site TEXT NOT NULL DEFAULT 'anahinails'",
+    "ALTER TABLE categories ADD COLUMN IF NOT EXISTS subcategories JSONB NOT NULL DEFAULT '[]'::jsonb",
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS variants JSONB NOT NULL DEFAULT '[]'::jsonb",
     'ALTER TABLE products ADD COLUMN IF NOT EXISTS subcategory TEXT',
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS site TEXT NOT NULL DEFAULT 'anahinails'",
@@ -150,15 +152,15 @@ export async function ensureDatabase() {
     const existingCategory = await sql.query('SELECT id FROM categories WHERE id = $1 LIMIT 1', [category.id])
     if (existingCategory[0]?.id) {
       await sql.query(
-        'UPDATE categories SET slug = $1, name = $2, description = $3, site = $4 WHERE id = $5',
-        [category.slug, category.name, category.description, category.site, category.id],
+        'UPDATE categories SET slug = $1, name = $2, description = $3, site = $4, subcategories = $5::jsonb WHERE id = $6',
+        [category.slug, category.name, category.description, category.site, JSON.stringify(category.subcategories || []), category.id],
       )
       continue
     }
 
     await sql.query(
-      'INSERT INTO categories (id, slug, name, description, site) VALUES ($1, $2, $3, $4, $5)',
-      [category.id, category.slug, category.name, category.description, category.site],
+      'INSERT INTO categories (id, slug, name, description, site, subcategories) VALUES ($1, $2, $3, $4, $5, $6::jsonb)',
+      [category.id, category.slug, category.name, category.description, category.site, JSON.stringify(category.subcategories || [])],
     )
   }
 

@@ -5,6 +5,7 @@ export const seedCategories = [
     name: 'Semipermanentes',
     description: 'Colores y lineas de alta rotacion para servicio diario.',
     site: 'anahinails',
+    subcategories: ['City Girl', 'Navi'],
   },
   {
     id: 'cat-polygel',
@@ -12,6 +13,7 @@ export const seedCategories = [
     name: 'Polygel',
     description: 'Lineas y tonos para construccion y refuerzo profesional.',
     site: 'anahinails',
+    subcategories: ['Construccion', 'Easy Gel', 'City Girl'],
   },
   {
     id: 'cat-decoracion',
@@ -19,6 +21,7 @@ export const seedCategories = [
     name: 'Decoracion y Nail Art',
     description: 'Stickers, pigmentos, piedras y detalles para elevar el ticket.',
     site: 'anahinails',
+    subcategories: ['Bases', 'Cat Eye', 'Apliques'],
   },
   {
     id: 'cat-soft-gel',
@@ -26,6 +29,7 @@ export const seedCategories = [
     name: 'Soft Gel',
     description: 'Tips y soluciones para sets rapidos, prolijos y premium.',
     site: 'anahinails',
+    subcategories: ['Kits'],
   },
   {
     id: 'cat-herramientas',
@@ -33,6 +37,7 @@ export const seedCategories = [
     name: 'Cabinas y Herramientas',
     description: 'Cabinas, tornos, fresas y accesorios clave para profesionales.',
     site: 'anahinails',
+    subcategories: ['Cabinas', 'Extractores'],
   },
   {
     id: 'cat-pinceles',
@@ -40,6 +45,7 @@ export const seedCategories = [
     name: 'Pinceles y Accesorios',
     description: 'Complementos de trabajo para detalle, precision y terminacion.',
     site: 'anahinails',
+    subcategories: [],
   },
   {
     id: 'cat-ws-buzos',
@@ -47,6 +53,7 @@ export const seedCategories = [
     name: 'Buzos',
     description: 'Buzos a pedido con identidad propia, visual exclusiva y terminacion premium.',
     site: 'wildspirit',
+    subcategories: ['Oversize'],
   },
   {
     id: 'cat-ws-remeras',
@@ -54,6 +61,7 @@ export const seedCategories = [
     name: 'Remeras',
     description: 'Remeras personalizadas para vestir tu esencia con diseño y calidad.',
     site: 'wildspirit',
+    subcategories: ['Boxy'],
   },
 ]
 

@@ -9,6 +9,7 @@ export const fallbackCategories: Category[] = [
     description: 'Colores y lineas de alta rotacion para servicio diario.',
     imageUrl: categoryImageMap.semipermanentes,
     site: 'anahinails',
+    subcategories: ['City Girl', 'Navi'],
   },
   {
     id: 'cat-polygel',
@@ -17,6 +18,7 @@ export const fallbackCategories: Category[] = [
     description: 'Lineas y tonos para construccion y refuerzo profesional.',
     imageUrl: categoryImageMap.polygel,
     site: 'anahinails',
+    subcategories: ['Construccion', 'Easy Gel', 'City Girl'],
   },
   {
     id: 'cat-decoracion',
@@ -25,6 +27,7 @@ export const fallbackCategories: Category[] = [
     description: 'Stickers, pigmentos, piedras y detalles para elevar el ticket.',
     imageUrl: categoryImageMap.decoracion,
     site: 'anahinails',
+    subcategories: ['Bases', 'Cat Eye', 'Apliques'],
   },
   {
     id: 'cat-soft-gel',
@@ -33,6 +36,7 @@ export const fallbackCategories: Category[] = [
     description: 'Tips y soluciones para sets rapidos, prolijos y premium.',
     imageUrl: categoryImageMap['soft-gel'],
     site: 'anahinails',
+    subcategories: ['Kits'],
   },
   {
     id: 'cat-herramientas',
@@ -41,6 +45,7 @@ export const fallbackCategories: Category[] = [
     description: 'Cabinas, tornos, fresas y accesorios clave para profesionales.',
     imageUrl: categoryImageMap['cabinas-y-herramientas'],
     site: 'anahinails',
+    subcategories: ['Cabinas', 'Extractores'],
   },
   {
     id: 'cat-pinceles',
@@ -49,6 +54,7 @@ export const fallbackCategories: Category[] = [
     description: 'Complementos de trabajo para detalle, precision y terminacion.',
     imageUrl: categoryImageMap['pinceles-y-accesorios'],
     site: 'anahinails',
+    subcategories: [],
   },
   {
     id: 'cat-ws-buzos',
@@ -57,6 +63,7 @@ export const fallbackCategories: Category[] = [
     description: 'Buzos premium a pedido y de identidad visual propia.',
     imageUrl: '/wild-spirit-logo.jpeg',
     site: 'wildspirit',
+    subcategories: ['Oversize'],
   },
   {
     id: 'cat-ws-remeras',
@@ -65,6 +72,7 @@ export const fallbackCategories: Category[] = [
     description: 'Remeras boxy y oversized para diseño exclusivo.',
     imageUrl: '/wild-spirit-logo.jpeg',
     site: 'wildspirit',
+    subcategories: ['Boxy'],
   },
 ]
 

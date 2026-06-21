@@ -16,6 +16,7 @@ export interface Category {
   description: string
   imageUrl?: string
   site: StoreSite
+  subcategories: string[]
 }
 
 export interface Product {

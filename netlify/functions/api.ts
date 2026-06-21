@@ -30,6 +30,7 @@ type CategoryInput = {
   description: string
   imageUrl?: string
   site?: string
+  subcategories?: string[]
 }
 
 type CouponInput = {
@@ -150,6 +151,9 @@ function normalizeCategory(row: DataRow) {
     description: row.description,
     imageUrl: row.image_url ?? row.imageUrl ?? null,
     site: row.site ?? 'anahinails',
+    subcategories: Array.isArray(row.subcategories)
+      ? row.subcategories
+      : JSON.parse(String(row.subcategories || '[]')),
   }
 }
 
@@ -198,10 +202,10 @@ async function listCategories(site?: string) {
     return items.map(normalizeCategory)
   }
   if (site) {
-    const rows = await sql.query('SELECT id, slug, name, description, image_url, site FROM categories WHERE site = $1 ORDER BY name ASC', [site])
+    const rows = await sql.query('SELECT id, slug, name, description, image_url, site, subcategories FROM categories WHERE site = $1 ORDER BY name ASC', [site])
     return rows.map(normalizeCategory)
   }
-  const rows = await sql.query('SELECT id, slug, name, description, image_url, site FROM categories ORDER BY name ASC')
+  const rows = await sql.query('SELECT id, slug, name, description, image_url, site, subcategories FROM categories ORDER BY name ASC')
   return rows.map(normalizeCategory)
 }
 
@@ -489,6 +493,7 @@ async function createOrUpdateCategory(
       description: input.description,
       imageUrl: input.imageUrl || '',
       site: input.site || 'anahinails',
+      subcategories: Array.from(new Set((input.subcategories || []).map((item) => item.trim()).filter(Boolean))),
     }
     const existing = state.categories.find((item) => item.id === id)
     if (existing) {
@@ -500,25 +505,34 @@ async function createOrUpdateCategory(
   }
 
   if (id) {
-    await sql.query('UPDATE categories SET slug = $1, name = $2, description = $3, image_url = $4, site = $5 WHERE id = $6', [
+    await sql.query('UPDATE categories SET slug = $1, name = $2, description = $3, image_url = $4, site = $5, subcategories = $6::jsonb WHERE id = $7', [
       input.slug,
       input.name,
       input.description,
       input.imageUrl || null,
       input.site || 'anahinails',
+      JSON.stringify(Array.from(new Set((input.subcategories || []).map((item) => item.trim()).filter(Boolean)))),
       id,
     ])
-    const rows = await sql.query('SELECT id, slug, name, description, image_url, site FROM categories WHERE id = $1', [id])
-    return rows[0]
+    const rows = await sql.query('SELECT id, slug, name, description, image_url, site, subcategories FROM categories WHERE id = $1', [id])
+    return normalizeCategory(rows[0])
   }
 
   const newId = createId('cat')
   await sql.query(
-    'INSERT INTO categories (id, slug, name, description, image_url, site) VALUES ($1, $2, $3, $4, $5, $6)',
-    [newId, input.slug, input.name, input.description, input.imageUrl || null, input.site || 'anahinails'],
+    'INSERT INTO categories (id, slug, name, description, image_url, site, subcategories) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)',
+    [
+      newId,
+      input.slug,
+      input.name,
+      input.description,
+      input.imageUrl || null,
+      input.site || 'anahinails',
+      JSON.stringify(Array.from(new Set((input.subcategories || []).map((item) => item.trim()).filter(Boolean)))),
+    ],
   )
-  const rows = await sql.query('SELECT id, slug, name, description, image_url, site FROM categories WHERE id = $1', [newId])
-  return rows[0]
+  const rows = await sql.query('SELECT id, slug, name, description, image_url, site, subcategories FROM categories WHERE id = $1', [newId])
+  return normalizeCategory(rows[0])
 }
 
 async function deleteCategory(id: string) {

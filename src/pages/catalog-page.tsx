@@ -36,7 +36,11 @@ export function CatalogPage({ site = 'anahinails' }: { site?: StoreSite }) {
   })
 
   const handleChange = (field: string, value: string | boolean) => {
-    setLocalFilters((current) => ({ ...current, [field]: value }))
+    setLocalFilters((current) => ({
+      ...current,
+      [field]: value,
+      ...(field === 'category' ? { subcategory: '' } : {}),
+    }))
     startTransition(() => {
       const next = new URLSearchParams(searchParams)
       const mappedField = field === 'search' ? 'q' : field === 'featuredOnly' ? 'featured' : field
@@ -44,6 +48,9 @@ export function CatalogPage({ site = 'anahinails' }: { site?: StoreSite }) {
         next.delete(mappedField)
       } else {
         next.set(mappedField, String(value))
+      }
+      if (field === 'category') {
+        next.delete('subcategory')
       }
       setSearchParams(next, { replace: true })
     })
@@ -54,11 +61,17 @@ export function CatalogPage({ site = 'anahinails' }: { site?: StoreSite }) {
     return `${count} productos`
   }, [productQuery.data])
   const subcategories = useMemo(
-    () =>
-      Array.from(
+    () => {
+      const selectedCategory = (categoryQuery.data || []).find((item) => item.slug === localFilters.category)
+      const fromCategory = selectedCategory?.subcategories || []
+      if (fromCategory.length > 0) {
+        return [...fromCategory].sort((left, right) => left.localeCompare(right))
+      }
+      return Array.from(
         new Set((productQuery.data || []).map((item) => item.subcategory).filter(Boolean) as string[]),
-      ).sort((left, right) => left.localeCompare(right)),
-    [productQuery.data],
+      ).sort((left, right) => left.localeCompare(right))
+    },
+    [categoryQuery.data, localFilters.category, productQuery.data],
   )
 
   return (

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Menu, Package, Settings, Shapes, ShoppingCart, TicketPercent, X } from 'lucide-react'
+import { Copy, Menu, Package, Settings, Shapes, ShoppingCart, TicketPercent, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useSEO } from '../hooks/use-seo'
@@ -62,6 +62,7 @@ const emptyCategoryForm: Partial<Category> = {
   slug: '',
   site: 'anahinails',
   imageUrl: '',
+  subcategories: [],
 }
 
 const emptyCouponForm: Partial<DiscountCoupon> = {
@@ -106,6 +107,28 @@ function toLocalDateTime(value?: string | null) {
   return local.toISOString().slice(0, 16)
 }
 
+function parseSubcategories(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(/\r?\n|,/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  )
+}
+
+function buildDuplicateSlug(slug?: string, name?: string) {
+  const base = slugify(slug || name || 'producto')
+  return `${base || 'producto'}-${Date.now().toString().slice(-6)}`
+}
+
+function normalizeInlineNumber(value: string) {
+  if (!value.trim()) return 0
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 function ProductEditorModal({
   open,
   form,
@@ -124,10 +147,13 @@ function ProductEditorModal({
   onClose: () => void
   onChange: (updater: (current: Partial<Product>) => Partial<Product>) => void
   onSubmit: () => void
-  onUpload: (file: File) => void
+  onUpload: (files: FileList | File[]) => void
   pending: boolean
 }) {
   if (!open) return null
+
+  const selectedCategory = categories.find((category) => category.id === form.categoryId)
+  const availableSubcategories = selectedCategory?.subcategories || []
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 p-3 sm:p-6" onClick={onClose}>
@@ -204,7 +230,13 @@ function ProductEditorModal({
               <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Categoría</span>
               <select
                 value={form.categoryId || ''}
-                onChange={(event) => onChange((current) => ({ ...current, categoryId: event.target.value }))}
+                onChange={(event) =>
+                  onChange((current) => ({
+                    ...current,
+                    categoryId: event.target.value,
+                    subcategory: '',
+                  }))
+                }
                 className={inputClass}
               >
                 <option value="">Seleccionar</option>
@@ -219,9 +251,24 @@ function ProductEditorModal({
             </label>
             <label>
               <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Subcategoría</span>
+              {availableSubcategories.length > 0 ? (
+                <select
+                  value={form.subcategory || ''}
+                  onChange={(event) => onChange((current) => ({ ...current, subcategory: event.target.value }))}
+                  className={cn(inputClass, 'mb-3')}
+                >
+                  <option value="">Seleccionar subcategoría</option>
+                  {availableSubcategories.map((subcategory) => (
+                    <option key={subcategory} value={subcategory}>
+                      {subcategory}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               <input
                 value={form.subcategory || ''}
                 onChange={(event) => onChange((current) => ({ ...current, subcategory: event.target.value }))}
+                placeholder={availableSubcategories.length > 0 ? 'O escribir una nueva subcategoría' : 'Subcategoría'}
                 className={inputClass}
               />
             </label>
@@ -306,18 +353,59 @@ function ProductEditorModal({
               />
             </label>
             <label className="rounded-[1.5rem] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 text-sm text-[var(--color-muted)]">
-              <span className="mb-2 block font-medium text-[var(--color-text)]">Subir imagen</span>
+              <span className="mb-2 block font-medium text-[var(--color-text)]">Subir imágenes</span>
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  if (file) onUpload(file)
+                  const files = event.target.files
+                  if (files?.length) {
+                    onUpload(files)
+                    event.target.value = ''
+                  }
                 }}
                 className="block w-full"
               />
-              <span className="mt-2 block text-xs">{uploadingImage ? 'Subiendo...' : 'Carga directa a Cloudinary'}</span>
+              <span className="mt-2 block text-xs">{uploadingImage ? 'Subiendo...' : 'Carga directa a Cloudinary al seleccionar'}</span>
             </label>
+          </div>
+
+          <div className={cn(panelClass, 'p-5')}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="font-semibold text-[var(--color-text)]">Galería del producto</h4>
+                <p className="text-sm text-[var(--color-muted)]">Podés subir varias imágenes. La primera queda como principal.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {(form.imageUrls || []).filter(Boolean).map((image, index) => (
+                <div key={`${image}-${index}`} className="overflow-hidden rounded-[1.5rem] border border-[var(--color-border)] bg-[var(--color-surface)]">
+                  <div className="aspect-square bg-white">
+                    <img src={image} alt={`Imagen ${index + 1}`} className="h-full w-full object-contain p-3" />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border)] px-3 py-3">
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                      {index === 0 ? 'Principal' : `Imagen ${index + 1}`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onChange((current) => ({
+                          ...current,
+                          imageUrls: (current.imageUrls || []).filter((_, itemIndex) => itemIndex !== index),
+                        }))
+                      }
+                      className="inline-flex items-center gap-2 rounded-full border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600"
+                    >
+                      <Trash2 size={14} />
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
@@ -460,9 +548,12 @@ export function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('products')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const [productEditorOpen, setProductEditorOpen] = useState(false)
   const [productSearch, setProductSearch] = useState('')
+  const [productListError, setProductListError] = useState('')
   const [form, setForm] = useState<Partial<Product>>(emptyProductForm())
+  const [productDrafts, setProductDrafts] = useState<Record<string, { name: string; price: string; compareAtPrice: string; stock: string }>>({})
   const [categoryForm, setCategoryForm] = useState<Partial<Category>>(emptyCategoryForm)
   const [couponForm, setCouponForm] = useState<Partial<DiscountCoupon>>(emptyCouponForm)
   const [settingsForm, setSettingsForm] = useState<StoreSettings | null>(null)
@@ -520,6 +611,7 @@ export function AdminDashboardPage() {
     onSuccess: () => {
       refreshProducts()
       setForm(emptyProductForm())
+      setUploadError('')
       setProductEditorOpen(false)
     },
   })
@@ -527,12 +619,46 @@ export function AdminDashboardPage() {
   const stockMutation = useMutation({
     mutationFn: ({ product, stock }: { product: Product; stock: number }) =>
       api.updateProduct(token, product.id, { ...product, stock: Math.max(0, stock) }),
-    onSuccess: refreshProducts,
+    onSuccess: () => {
+      setProductListError('')
+      refreshProducts()
+    },
+    onError: (error) => {
+      setProductListError(error instanceof Error ? error.message : 'No se pudo actualizar el stock.')
+    },
   })
 
   const deleteProductMutation = useMutation({
     mutationFn: (id: string) => api.deleteProduct(token, id),
-    onSuccess: refreshProducts,
+    onSuccess: () => {
+      setProductListError('')
+      refreshProducts()
+    },
+    onError: (error) => {
+      setProductListError(error instanceof Error ? error.message : 'No se pudo eliminar el producto.')
+    },
+  })
+
+  const quickEditMutation = useMutation({
+    mutationFn: (product: Product) => {
+      const draft = productDrafts[product.id]
+      return api.updateProduct(token, product.id, {
+        ...product,
+        name: draft?.name ?? product.name,
+        price: normalizeInlineNumber(draft?.price ?? String(product.price)),
+        compareAtPrice: (draft?.compareAtPrice ?? '').trim()
+          ? normalizeInlineNumber(draft?.compareAtPrice ?? '')
+          : null,
+        stock: Math.max(0, normalizeInlineNumber(draft?.stock ?? String(product.stock))),
+      })
+    },
+    onSuccess: () => {
+      setProductListError('')
+      refreshProducts()
+    },
+    onError: (error) => {
+      setProductListError(error instanceof Error ? error.message : 'No se pudo guardar la edición rápida.')
+    },
   })
 
   const categoryMutation = useMutation({
@@ -579,28 +705,43 @@ export function AdminDashboardPage() {
     },
   })
 
-  async function uploadImage(file: File) {
+  async function uploadImage(files: FileList | File[]) {
     setUploadingImage(true)
+    setUploadError('')
     try {
+      const selectedFiles = Array.from(files)
+      if (selectedFiles.length === 0) return
       const signature = await api.signCloudinaryUpload(token, 'anahi-nails-diamond/products')
-      const data = new FormData()
-      data.append('file', file)
-      data.append('api_key', signature.apiKey)
-      data.append('timestamp', String(signature.timestamp))
-      data.append('signature', signature.signature)
-      data.append('folder', signature.folder)
+      const uploadedUrls: string[] = []
 
-      const response = await fetch(`https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`, {
-        method: 'POST',
-        body: data,
-      })
-      const result = (await response.json()) as { secure_url?: string }
-      if (result.secure_url) {
-        setForm((current) => ({
-          ...current,
-          imageUrls: [result.secure_url!, ...(current.imageUrls || []).slice(1)],
-        }))
+      for (const file of selectedFiles) {
+        const data = new FormData()
+        data.append('file', file)
+        data.append('api_key', signature.apiKey)
+        data.append('timestamp', String(signature.timestamp))
+        data.append('signature', signature.signature)
+        data.append('folder', signature.folder)
+
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`, {
+          method: 'POST',
+          body: data,
+        })
+        const result = (await response.json()) as { secure_url?: string; error?: { message?: string } }
+        if (!response.ok) {
+          throw new Error(result.error?.message || `No se pudo subir ${file.name}.`)
+        }
+        if (!result.secure_url) {
+          throw new Error(`Cloudinary no devolvió la URL para ${file.name}.`)
+        }
+        uploadedUrls.push(result.secure_url)
       }
+
+      setForm((current) => ({
+        ...current,
+        imageUrls: [...new Set([...(current.imageUrls || []).filter(Boolean), ...uploadedUrls])],
+      }))
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'No se pudo subir la imagen.')
     } finally {
       setUploadingImage(false)
     }
@@ -608,6 +749,7 @@ export function AdminDashboardPage() {
 
   function openNewProduct() {
     setForm(emptyProductForm())
+    setUploadError('')
     setProductEditorOpen(true)
   }
 
@@ -617,8 +759,49 @@ export function AdminDashboardPage() {
       imageUrls: product.imageUrls?.length ? product.imageUrls : [''],
       variants: product.variants || [],
     })
+    setUploadError('')
     setProductEditorOpen(true)
   }
+
+  function openDuplicateProduct(product: Product) {
+    setForm({
+      ...product,
+      id: undefined,
+      sku: '',
+      slug: buildDuplicateSlug(product.slug, product.name),
+      name: `${product.name} copia`,
+      imageUrls: product.imageUrls?.length ? [...product.imageUrls] : [''],
+      variants: (product.variants || []).map((variant, index) => ({
+        ...variant,
+        id: `copy-${Date.now()}-${index}`,
+      })),
+    })
+    setUploadError('')
+    setProductEditorOpen(true)
+  }
+
+  function getProductDraft(product: Product) {
+    return (
+      productDrafts[product.id] || {
+        name: product.name,
+        price: String(product.price ?? 0),
+        compareAtPrice: product.compareAtPrice ? String(product.compareAtPrice) : '',
+        stock: String(product.stock ?? 0),
+      }
+    )
+  }
+
+  function updateProductDraft(product: Product, field: 'name' | 'price' | 'compareAtPrice' | 'stock', value: string) {
+    setProductDrafts((current) => ({
+      ...current,
+      [product.id]: {
+        ...getProductDraft(product),
+        [field]: value,
+      },
+    }))
+  }
+
+  const categorySubcategoriesValue = (categoryForm.subcategories || []).join('\n')
 
   function renderSidebar() {
     return (
@@ -688,7 +871,11 @@ export function AdminDashboardPage() {
         form={form}
         categories={categories}
         uploadingImage={uploadingImage}
-        onClose={() => setProductEditorOpen(false)}
+        onClose={() => {
+          setProductEditorOpen(false)
+          productMutation.reset()
+          setUploadError('')
+        }}
         onChange={(updater) => setForm((current) => updater(current))}
         onSubmit={() => productMutation.mutate()}
         onUpload={uploadImage}
@@ -755,13 +942,36 @@ export function AdminDashboardPage() {
                   </div>
                 </div>
 
+                {productMutation.isError ? (
+                  <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
+                    {productMutation.error instanceof Error ? productMutation.error.message : 'No se pudo guardar el producto.'}
+                  </div>
+                ) : null}
+                {uploadError ? (
+                  <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-700">
+                    {uploadError}
+                  </div>
+                ) : null}
+                {productListError ? (
+                  <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
+                    {productListError}
+                  </div>
+                ) : null}
+
                 <div className="grid gap-4">
                   {filteredProducts.map((product) => (
                     <article key={product.id} className={cn(panelClass, 'p-5')}>
+                      {(() => {
+                        const draft = getProductDraft(product)
+                        return (
                       <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-3">
-                            <h3 className="text-lg font-semibold text-[var(--color-text)]">{product.name}</h3>
+                            <input
+                              value={draft.name}
+                              onChange={(event) => updateProductDraft(product, 'name', event.target.value)}
+                              className="min-w-[280px] flex-1 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-lg font-semibold text-[var(--color-text)] outline-none"
+                            />
                             <span className="rounded-full bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-muted)]">
                               {product.sku || 'Sin SKU'}
                             </span>
@@ -773,8 +983,39 @@ export function AdminDashboardPage() {
                             {product.categoryName}
                             {product.subcategory ? ` · ${product.subcategory}` : ''}
                           </p>
+                          <div className="mt-3 flex flex-wrap gap-4">
+                            <label className="min-w-[150px]">
+                              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Precio</span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={draft.price}
+                                onChange={(event) => updateProductDraft(product, 'price', event.target.value)}
+                                className={inputClass}
+                              />
+                            </label>
+                            <label className="min-w-[170px]">
+                              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Promocional</span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={draft.compareAtPrice}
+                                onChange={(event) => updateProductDraft(product, 'compareAtPrice', event.target.value)}
+                                className={inputClass}
+                              />
+                            </label>
+                            <label className="min-w-[120px]">
+                              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Stock</span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={draft.stock}
+                                onChange={(event) => updateProductDraft(product, 'stock', event.target.value)}
+                                className={inputClass}
+                              />
+                            </label>
+                          </div>
                           <div className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--color-muted)]">
-                            <span>{formatCurrency(product.price)}</span>
                             <span>{product.variants.length} variantes</span>
                             {product.featured ? <span>Destacado</span> : null}
                           </div>
@@ -810,6 +1051,19 @@ export function AdminDashboardPage() {
                             </div>
                           </div>
 
+                          <button
+                            type="button"
+                            onClick={() => quickEditMutation.mutate(product)}
+                            className="btn-primary rounded-full px-4 py-3 text-sm font-semibold"
+                          >
+                            {quickEditMutation.isPending ? 'Guardando...' : 'Guardar'}
+                          </button>
+                          <button type="button" onClick={() => openDuplicateProduct(product)} className={outlineButtonClass}>
+                            <span className="inline-flex items-center gap-2">
+                              <Copy size={16} />
+                              Duplicar
+                            </span>
+                          </button>
                           <button type="button" onClick={() => openEditProduct(product)} className={outlineButtonClass}>
                             Editar
                           </button>
@@ -822,6 +1076,8 @@ export function AdminDashboardPage() {
                           </button>
                         </div>
                       </div>
+                        )
+                      })()}
                     </article>
                   ))}
                 </div>
@@ -880,8 +1136,34 @@ export function AdminDashboardPage() {
                       placeholder="Imagen de categoría"
                       className={inputClass}
                     />
+                    <textarea
+                      value={categorySubcategoriesValue}
+                      onChange={(event) =>
+                        setCategoryForm((current) => ({
+                          ...current,
+                          subcategories: parseSubcategories(event.target.value),
+                        }))
+                      }
+                      placeholder="Subcategorías, una por línea o separadas por coma"
+                      className={cn(inputClass, 'min-h-28')}
+                    />
+                    {categoryMutation.isError ? (
+                      <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                        {categoryMutation.error instanceof Error ? categoryMutation.error.message : 'No se pudo guardar la categoría.'}
+                      </div>
+                    ) : null}
                     <button className="btn-primary rounded-full px-5 py-4 text-sm font-semibold">
                       {categoryMutation.isPending ? 'Guardando...' : 'Guardar categoría'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCategoryForm(emptyCategoryForm)
+                        categoryMutation.reset()
+                      }}
+                      className={outlineButtonClass}
+                    >
+                      Nueva categoría
                     </button>
                   </div>
                 </form>
@@ -892,12 +1174,24 @@ export function AdminDashboardPage() {
                       <div>
                         <h3 className="text-lg font-semibold text-[var(--color-text)]">{category.name}</h3>
                         <p className="text-sm text-[var(--color-muted)]">{category.description}</p>
+                        {category.subcategories.length > 0 ? (
+                          <p className="mt-2 text-sm text-[var(--color-muted)]">
+                            Subcategorías: {category.subcategories.join(', ')}
+                          </p>
+                        ) : null}
                         <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">
                           {brandConfigs[category.site].shortName}
                         </p>
                       </div>
                       <div className="flex gap-3">
-                        <button type="button" onClick={() => setCategoryForm(category)} className={outlineButtonClass}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCategoryForm(category)
+                            categoryMutation.reset()
+                          }}
+                          className={outlineButtonClass}
+                        >
                           Editar
                         </button>
                         <button
