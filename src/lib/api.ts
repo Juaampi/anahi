@@ -56,6 +56,7 @@ export const api = {
       let items = [...fallbackProducts]
       const category = filters.get('category')
       const q = filters.get('q')?.toLowerCase()
+      const brand = filters.get('brand')?.toLowerCase()
       const featured = filters.get('featured')
       const minPrice = Number(filters.get('minPrice') || 0)
       const maxPrice = Number(filters.get('maxPrice') || 0)
@@ -70,7 +71,10 @@ export const api = {
         )
       }
       if (q) {
-        items = items.filter((item) => item.name.toLowerCase().includes(q))
+        items = items.filter((item) => item.name.toLowerCase().includes(q) || (item.brand || '').toLowerCase().includes(q))
+      }
+      if (brand) {
+        items = items.filter((item) => (item.brand || '').toLowerCase() === brand)
       }
       if (featured === 'true') {
         items = items.filter((item) => item.featured)

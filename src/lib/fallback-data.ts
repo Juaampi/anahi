@@ -9,7 +9,7 @@ export const fallbackCategories: Category[] = [
     description: 'Colores y lineas de alta rotacion para servicio diario.',
     imageUrl: categoryImageMap.semipermanentes,
     site: 'anahinails',
-    subcategories: ['City Girl', 'Navi'],
+    subcategories: ['Semipermanente', 'Esmalte en gel'],
   },
   {
     id: 'cat-polygel',
@@ -74,6 +74,15 @@ export const fallbackCategories: Category[] = [
     site: 'wildspirit',
     subcategories: ['Boxy'],
   },
+  {
+    id: 'cat-ws-ropa',
+    slug: 'ropa',
+    name: 'Ropa',
+    description: 'Categoria general para organizar prendas y accesorios por subcategoria.',
+    imageUrl: '/wild-spirit-logo.jpeg',
+    site: 'wildspirit',
+    subcategories: ['Accesorios', 'Buzos', 'Lentes', 'Remeras'],
+  },
 ]
 
 export const fallbackProducts: Product[] = [
@@ -93,7 +102,8 @@ export const fallbackProducts: Product[] = [
     categoryId: 'cat-semipermanentes',
     categoryName: 'Semipermanentes',
     site: 'anahinails',
-    subcategory: 'City Girl',
+    subcategory: 'Semipermanente',
+    brand: 'City Girl',
     variants: [
       {
         id: 'var-fb-01',
@@ -121,6 +131,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Decoracion y Nail Art',
     site: 'anahinails',
     subcategory: 'Bases',
+    brand: 'Rimera Quince',
     variants: [],
   },
   {
@@ -140,6 +151,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Polygel',
     site: 'anahinails',
     subcategory: 'Construccion',
+    brand: 'City Girl',
     variants: [],
   },
   {
@@ -159,6 +171,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Polygel',
     site: 'anahinails',
     subcategory: 'City Girl',
+    brand: 'City Girl',
     variants: [],
   },
   {
@@ -178,6 +191,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Polygel',
     site: 'anahinails',
     subcategory: 'City Girl',
+    brand: 'City Girl',
     variants: [],
   },
   {
@@ -197,6 +211,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Polygel',
     site: 'anahinails',
     subcategory: 'City Girl',
+    brand: 'City Girl',
     variants: [],
   },
   {
@@ -216,6 +231,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Polygel',
     site: 'anahinails',
     subcategory: 'Easy Gel',
+    brand: 'Easy Gel',
     variants: [],
   },
   {
@@ -235,6 +251,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Decoracion y Nail Art',
     site: 'anahinails',
     subcategory: 'Cat Eye',
+    brand: 'City Girl',
     variants: [],
   },
   {
@@ -254,6 +271,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Decoracion y Nail Art',
     site: 'anahinails',
     subcategory: 'Cat Eye',
+    brand: 'City Girl',
     variants: [],
   },
   {
@@ -272,7 +290,8 @@ export const fallbackProducts: Product[] = [
     categoryId: 'cat-semipermanentes',
     categoryName: 'Semipermanentes',
     site: 'anahinails',
-    subcategory: 'Navi',
+    subcategory: 'Semipermanente',
+    brand: 'Navi',
     variants: [],
   },
   {
@@ -292,6 +311,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Cabinas y Herramientas',
     site: 'anahinails',
     subcategory: 'Cabinas',
+    brand: 'Diamond',
     variants: [],
   },
   {
@@ -311,6 +331,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Cabinas y Herramientas',
     site: 'anahinails',
     subcategory: 'Cabinas',
+    brand: 'Duga',
     variants: [],
   },
   {
@@ -330,6 +351,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Cabinas y Herramientas',
     site: 'anahinails',
     subcategory: 'Cabinas',
+    brand: 'Duga',
     variants: [],
   },
   {
@@ -349,6 +371,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Cabinas y Herramientas',
     site: 'anahinails',
     subcategory: 'Extractores',
+    brand: 'Cherimoya',
     variants: [],
   },
   {
@@ -368,6 +391,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Buzos',
     site: 'wildspirit',
     subcategory: 'Oversize',
+    brand: 'Wild Spirit',
     variants: [
       { id: 'prod-ws-fb-01-black', name: 'Negro', color: 'Negro', imageUrl: '/wild-spirit-logo.jpeg', stock: 5 },
       { id: 'prod-ws-fb-01-cream', name: 'Cream', color: 'Cream', imageUrl: '/wild-spirit-logo.jpeg', stock: 6 },
@@ -390,6 +414,7 @@ export const fallbackProducts: Product[] = [
     categoryName: 'Remeras',
     site: 'wildspirit',
     subcategory: 'Boxy',
+    brand: 'Wild Spirit',
     variants: [
       { id: 'prod-ws-fb-02-white', name: 'Blanca', color: 'Blanco', imageUrl: '/wild-spirit-logo.jpeg', stock: 7 },
       { id: 'prod-ws-fb-02-stone', name: 'Stone', color: 'Stone', imageUrl: '/wild-spirit-logo.jpeg', stock: 7 },

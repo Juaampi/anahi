@@ -45,9 +45,9 @@ export function ProductCard({ product }: { product: Product }) {
         <h3 className="min-h-[72px] font-display text-[1.05rem] font-black uppercase leading-7 text-[var(--color-primary)]">
           <Link to={buildStorePath(product.site, `/productos/${product.slug}`)}>{product.name}</Link>
         </h3>
-        {product.subcategory ? (
+        {product.subcategory || product.brand ? (
           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
-            {product.categoryName} · {product.subcategory}
+            {[product.categoryName, product.subcategory, product.brand].filter(Boolean).join(' · ')}
           </p>
         ) : null}
 

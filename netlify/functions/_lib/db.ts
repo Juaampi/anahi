@@ -65,6 +65,7 @@ export async function ensureDatabase() {
       image_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
       variants JSONB NOT NULL DEFAULT '[]'::jsonb,
       subcategory TEXT,
+      brand TEXT,
       site TEXT NOT NULL DEFAULT 'anahinails',
       category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
       created_at TIMESTAMPTZ DEFAULT NOW()
@@ -141,6 +142,7 @@ export async function ensureDatabase() {
     "ALTER TABLE categories ADD COLUMN IF NOT EXISTS subcategories JSONB NOT NULL DEFAULT '[]'::jsonb",
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS variants JSONB NOT NULL DEFAULT '[]'::jsonb",
     'ALTER TABLE products ADD COLUMN IF NOT EXISTS subcategory TEXT',
+    'ALTER TABLE products ADD COLUMN IF NOT EXISTS brand TEXT',
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS site TEXT NOT NULL DEFAULT 'anahinails'",
   ]
 
@@ -169,8 +171,8 @@ export async function ensureDatabase() {
     for (const product of seedProducts) {
       await sql.query(
         `INSERT INTO products
-          (id, slug, sku, name, description, short_description, price, compare_at_price, stock, featured, badges, image_urls, variants, subcategory, site, category_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13::jsonb, $14, $15, $16)`,
+          (id, slug, sku, name, description, short_description, price, compare_at_price, stock, featured, badges, image_urls, variants, subcategory, brand, site, category_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13::jsonb, $14, $15, $16, $17)`,
         [
           product.id,
           product.slug,
@@ -186,6 +188,7 @@ export async function ensureDatabase() {
           JSON.stringify(product.imageUrls),
           JSON.stringify(product.variants || []),
           product.subcategory || null,
+          product.brand || null,
           product.site,
           product.categoryId,
         ],

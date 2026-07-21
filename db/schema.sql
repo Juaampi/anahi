@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS products (
   image_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
   variants JSONB NOT NULL DEFAULT '[]'::jsonb,
   subcategory TEXT,
+  brand TEXT,
   site TEXT NOT NULL DEFAULT 'anahinails',
   category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
   created_at TIMESTAMPTZ DEFAULT NOW()

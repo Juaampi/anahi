@@ -5,7 +5,7 @@ export const seedCategories = [
     name: 'Semipermanentes',
     description: 'Colores y lineas de alta rotacion para servicio diario.',
     site: 'anahinails',
-    subcategories: ['City Girl', 'Navi'],
+    subcategories: ['Semipermanente', 'Esmalte en gel'],
   },
   {
     id: 'cat-polygel',
@@ -63,6 +63,14 @@ export const seedCategories = [
     site: 'wildspirit',
     subcategories: ['Boxy'],
   },
+  {
+    id: 'cat-ws-ropa',
+    slug: 'ropa',
+    name: 'Ropa',
+    description: 'Categoria general para organizar prendas y accesorios por subcategoria.',
+    site: 'wildspirit',
+    subcategories: ['Accesorios', 'Buzos', 'Lentes', 'Remeras'],
+  },
 ]
 
 export const seedProducts = [
@@ -82,7 +90,8 @@ export const seedProducts = [
     categoryId: 'cat-semipermanentes',
     categoryName: 'Semipermanentes',
     site: 'anahinails',
-    subcategory: 'City Girl',
+    subcategory: 'Semipermanente',
+    brand: 'City Girl',
     variants: [
       {
         id: 'var-01-40',
@@ -116,7 +125,8 @@ export const seedProducts = [
     categoryId: 'cat-semipermanentes',
     categoryName: 'Semipermanentes',
     site: 'anahinails',
-    subcategory: 'City Girl',
+    subcategory: 'Semipermanente',
+    brand: 'Rimera Quince',
     variants: [],
   },
   {
@@ -136,6 +146,7 @@ export const seedProducts = [
     categoryName: 'Polygel',
     site: 'anahinails',
     subcategory: 'Construccion',
+    brand: 'City Girl',
     variants: [],
   },
   {
@@ -155,6 +166,7 @@ export const seedProducts = [
     categoryName: 'Polygel',
     site: 'anahinails',
     subcategory: 'Easy Gel',
+    brand: 'Easy Gel',
     variants: [],
   },
   {
@@ -174,6 +186,7 @@ export const seedProducts = [
     categoryName: 'Decoracion y Nail Art',
     site: 'anahinails',
     subcategory: 'Cat Eye',
+    brand: 'City Girl',
     variants: [],
   },
   {
@@ -193,6 +206,7 @@ export const seedProducts = [
     categoryName: 'Decoracion y Nail Art',
     site: 'anahinails',
     subcategory: 'Bases',
+    brand: 'Bompassy',
     variants: [],
   },
   {
@@ -212,6 +226,7 @@ export const seedProducts = [
     categoryName: 'Soft Gel',
     site: 'anahinails',
     subcategory: 'Kits',
+    brand: 'Navi',
     variants: [],
   },
   {
@@ -231,6 +246,7 @@ export const seedProducts = [
     categoryName: 'Cabinas y Herramientas',
     site: 'anahinails',
     subcategory: 'Cabinas',
+    brand: 'Diamond',
     variants: [],
   },
   {
@@ -250,6 +266,7 @@ export const seedProducts = [
     categoryName: 'Decoracion y Nail Art',
     site: 'anahinails',
     subcategory: 'Apliques',
+    brand: 'Bompassy',
     variants: [],
   },
   {
@@ -269,6 +286,7 @@ export const seedProducts = [
     categoryName: 'Buzos',
     site: 'wildspirit',
     subcategory: 'Oversize',
+    brand: 'Wild Spirit',
     variants: [
       {
         id: 'ws-bz-001-negro',
@@ -303,6 +321,7 @@ export const seedProducts = [
     categoryName: 'Remeras',
     site: 'wildspirit',
     subcategory: 'Boxy',
+    brand: 'Wild Spirit',
     variants: [
       {
         id: 'ws-rm-002-blanco',

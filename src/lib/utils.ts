@@ -19,6 +19,17 @@ export function buildWhatsAppLink(message: string) {
   return `${base}${number}?text=${encodeURIComponent(message)}`
 }
 
+export function getWhatsAppDisplayNumber() {
+  const number = (import.meta.env.VITE_WHATSAPP_NUMBER || '5490000000000').replace(/\D/g, '')
+  if (number.startsWith('549') && number.length > 10) {
+    return number.slice(3)
+  }
+  if (number.startsWith('54') && number.length > 10) {
+    return number.slice(2)
+  }
+  return number
+}
+
 export function slugify(value: string) {
   return value
     .toLowerCase()

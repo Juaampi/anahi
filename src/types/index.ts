@@ -36,6 +36,7 @@ export interface Product {
   categoryName: string
   site: StoreSite
   subcategory?: string
+  brand?: string
   variants: ProductVariant[]
   createdAt?: string
 }
@@ -101,6 +102,8 @@ export interface StorefrontPayload {
 
 export interface CatalogFilters {
   category?: string
+  subcategory?: string
+  brand?: string
   q?: string
   featured?: boolean
   sort?: 'featured' | 'price-asc' | 'price-desc' | 'newest'

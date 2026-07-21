@@ -8,6 +8,8 @@ interface ProductFiltersProps {
   category: string
   subcategory: string
   subcategories: string[]
+  brand: string
+  brands: string[]
   sort: string
   minPrice: string
   maxPrice: string
@@ -16,7 +18,7 @@ interface ProductFiltersProps {
 }
 
 export function ProductFilters(props: ProductFiltersProps) {
-  const { categories, category, subcategory, subcategories, sort, minPrice, maxPrice, featuredOnly, onChange } = props
+  const { categories, category, subcategory, subcategories, brand, brands, sort, minPrice, maxPrice, featuredOnly, onChange } = props
 
   return (
     <aside className="space-y-5 rounded-[26px] border border-[var(--color-border)] bg-[var(--color-surface-card)] p-6 text-[var(--color-primary)] shadow-[0_18px_38px_rgba(17,24,39,0.05)]">
@@ -75,6 +77,29 @@ export function ProductFilters(props: ProductFiltersProps) {
                 className={cn(
                   'rounded-full px-4 py-2 text-sm font-semibold transition',
                   subcategory === item
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'bg-white text-[var(--color-primary)]',
+                )}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {brands.length > 0 ? (
+        <div className="space-y-3 rounded-[24px] border border-[var(--color-border)] bg-[#fffaf8] p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent)]">Marcas</p>
+          <div className="flex flex-wrap gap-2">
+            {brands.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => onChange('brand', brand === item ? '' : item)}
+                className={cn(
+                  'rounded-full px-4 py-2 text-sm font-semibold transition',
+                  brand === item
                     ? 'bg-[var(--color-primary)] text-white'
                     : 'bg-white text-[var(--color-primary)]',
                 )}

@@ -21,6 +21,7 @@ type ProductInput = {
   categoryId?: string
   site?: string
   subcategory?: string
+  brand?: string
   variants?: Array<{ id?: string; name?: string; color?: string; imageUrl?: string; stock?: number }>
 }
 
@@ -139,6 +140,7 @@ function normalizeProduct(row: DataRow) {
     categoryName: row.category_name ?? row.categoryName,
     site: row.site ?? 'anahinails',
     subcategory: row.subcategory ?? null,
+    brand: row.brand ?? null,
     createdAt: row.created_at ?? row.createdAt,
   }
 }
@@ -281,6 +283,7 @@ async function listProducts(searchParams: URLSearchParams) {
   const sql = await ensureDatabase()
   const category = searchParams.get('category')
   const subcategory = searchParams.get('subcategory')
+  const brand = searchParams.get('brand')
   const site = searchParams.get('site')
   const q = searchParams.get('q')?.toLowerCase()
   const featured = searchParams.get('featured')
@@ -293,7 +296,8 @@ async function listProducts(searchParams: URLSearchParams) {
     if (site) items = items.filter((item) => item.site === site)
     if (category) items = items.filter((item) => item.categoryName.toLowerCase().includes(category.toLowerCase()) || item.categoryId === category || item.slug.includes(category))
     if (subcategory) items = items.filter((item) => (item.subcategory || '').toLowerCase() === subcategory.toLowerCase())
-    if (q) items = items.filter((item) => item.name.toLowerCase().includes(q))
+    if (brand) items = items.filter((item) => (item.brand || '').toLowerCase() === brand.toLowerCase())
+    if (q) items = items.filter((item) => item.name.toLowerCase().includes(q) || (item.brand || '').toLowerCase().includes(q))
     if (featured === 'true') items = items.filter((item) => item.featured)
     if (minPrice) items = items.filter((item) => item.price >= minPrice)
     if (maxPrice) items = items.filter((item) => item.price <= maxPrice)
@@ -315,13 +319,17 @@ async function listProducts(searchParams: URLSearchParams) {
     params.push(subcategory)
     query += ` AND LOWER(COALESCE(p.subcategory, '')) = LOWER($${params.length})`
   }
+  if (brand) {
+    params.push(brand)
+    query += ` AND LOWER(COALESCE(p.brand, '')) = LOWER($${params.length})`
+  }
   if (site) {
     params.push(site)
     query += ` AND p.site = $${params.length}`
   }
   if (q) {
     params.push(`%${q}%`)
-    query += ` AND LOWER(p.name) LIKE $${params.length}`
+    query += ` AND (LOWER(p.name) LIKE $${params.length} OR LOWER(COALESCE(p.brand, '')) LIKE $${params.length})`
   }
   if (featured === 'true') query += ' AND p.featured = TRUE'
   if (minPrice) {
@@ -391,6 +399,7 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
       categoryName: category?.name || '',
       site: input.site || category?.site || 'anahinails',
       subcategory: input.subcategory || '',
+      brand: input.brand || '',
     }
     if (existing) {
       Object.assign(existing, payload)
@@ -419,8 +428,8 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
     await sql.query(
       `UPDATE products
        SET slug = $1, sku = $2, name = $3, description = $4, short_description = $5, price = $6, compare_at_price = $7,
-           stock = $8, featured = $9, badges = $10::jsonb, image_urls = $11::jsonb, variants = $12::jsonb, subcategory = $13, site = $14, category_id = $15
-       WHERE id = $16`,
+           stock = $8, featured = $9, badges = $10::jsonb, image_urls = $11::jsonb, variants = $12::jsonb, subcategory = $13, brand = $14, site = $15, category_id = $16
+       WHERE id = $17`,
       [
         input.slug,
         input.sku,
@@ -435,6 +444,7 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
         JSON.stringify(input.imageUrls || []),
         JSON.stringify(normalizedVariants),
         input.subcategory || null,
+        input.brand || null,
         input.site || category.site || 'anahinails',
         input.categoryId,
         id,
@@ -446,8 +456,8 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
   const newId = createId('prod')
   await sql.query(
     `INSERT INTO products
-      (id, slug, sku, name, description, short_description, price, compare_at_price, stock, featured, badges, image_urls, variants, subcategory, site, category_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13::jsonb, $14, $15, $16)`,
+      (id, slug, sku, name, description, short_description, price, compare_at_price, stock, featured, badges, image_urls, variants, subcategory, brand, site, category_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13::jsonb, $14, $15, $16, $17)`,
     [
       newId,
       input.slug,
@@ -463,6 +473,7 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
       JSON.stringify(input.imageUrls || []),
       JSON.stringify(normalizedVariants),
       input.subcategory || null,
+      input.brand || null,
       input.site || category.site || 'anahinails',
       input.categoryId,
     ],

@@ -53,6 +53,7 @@ const emptyProductForm = (): Partial<Product> => ({
   categoryId: '',
   site: 'anahinails',
   subcategory: '',
+  brand: '',
   variants: [],
 })
 
@@ -273,6 +274,16 @@ function ProductEditorModal({
               />
             </label>
           </div>
+
+          <label>
+            <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Marca</span>
+            <input
+              value={form.brand || ''}
+              onChange={(event) => onChange((current) => ({ ...current, brand: event.target.value }))}
+              placeholder="Ej: Navi, Bompassy"
+              className={inputClass}
+            />
+          </label>
 
           <label>
             <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Descripción corta</span>
@@ -593,7 +604,8 @@ export function AdminDashboardPage() {
       (product) =>
         product.name.toLowerCase().includes(query) ||
         product.sku.toLowerCase().includes(query) ||
-        product.categoryName.toLowerCase().includes(query),
+        product.categoryName.toLowerCase().includes(query) ||
+        (product.brand || '').toLowerCase().includes(query),
     )
   }, [productSearch, productsQuery.data])
 
@@ -980,8 +992,7 @@ export function AdminDashboardPage() {
                             </span>
                           </div>
                           <p className="mt-2 text-sm text-[var(--color-muted)]">
-                            {product.categoryName}
-                            {product.subcategory ? ` · ${product.subcategory}` : ''}
+                            {[product.categoryName, product.subcategory, product.brand].filter(Boolean).join(' · ')}
                           </p>
                           <div className="mt-3 flex flex-wrap gap-4">
                             <label className="min-w-[150px]">

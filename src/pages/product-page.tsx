@@ -145,7 +145,7 @@ export function ProductPage({ site }: { site?: StoreSite }) {
           <div className="space-y-6 text-[var(--color-primary)]">
             <div className="space-y-3">
               <p className="text-xs uppercase tracking-[0.25em] text-[var(--color-muted)]">
-                {product.categoryName}{product.subcategory ? ` · ${product.subcategory}` : ''}
+                {[product.categoryName, product.subcategory, product.brand].filter(Boolean).join(' · ')}
               </p>
               <h1 className="font-display text-4xl font-extrabold tracking-[-0.03em]">{product.name}</h1>
               <p className="max-w-2xl text-base leading-7 text-[var(--color-muted)]">{product.description}</p>

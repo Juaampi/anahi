@@ -2,13 +2,14 @@ import { Boxes, MessageCircle, Package } from 'lucide-react'
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { brandConfigs, storeSites } from '../../lib/constants'
-import { buildWhatsAppLink } from '../../lib/utils'
+import { buildWhatsAppLink, getWhatsAppDisplayNumber } from '../../lib/utils'
 
 export function WhatsAppFab() {
   const [open, setOpen] = useState(false)
   const location = useLocation()
   const currentSite = storeSites.find((site) => location.pathname.startsWith(`/${site}`)) || 'anahinails'
   const brand = brandConfigs[currentSite]
+  const displayNumber = getWhatsAppDisplayNumber()
 
   return (
     <div className="fixed bottom-5 right-5 z-50">
@@ -41,23 +42,33 @@ export function WhatsAppFab() {
               </div>
               <span className="text-sm font-medium text-zinc-900">Consultas y pedidos</span>
             </a>
-            <p className="px-3 pt-2 text-xs text-zinc-500">Selecciona un canal</p>
+            <p className="px-3 pt-2 text-xs text-zinc-500">Selecciona un canal o escribinos al {displayNumber}</p>
           </div>
         </div>
       ) : null}
-      <button
-        onClick={() => setOpen((value) => !value)}
-        className="flex items-center gap-3 rounded-full border border-[var(--color-border)] bg-white px-4 py-3 text-left shadow-[0_18px_40px_rgba(17,24,39,0.14)]"
-        aria-label="Abrir WhatsApp"
-      >
-        <div>
-          <div className="text-xs font-semibold text-[var(--color-muted)]">Hace tu consulta</div>
-          <div className="text-sm font-semibold text-zinc-900">Chatea por WhatsApp</div>
-        </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white">
-          <MessageCircle size={22} />
-        </div>
-      </button>
+      <div className="flex flex-col items-end gap-2">
+        <button
+          onClick={() => setOpen((value) => !value)}
+          className="flex items-center gap-3 rounded-full border border-[var(--color-border)] bg-white px-4 py-3 text-left shadow-[0_18px_40px_rgba(17,24,39,0.14)]"
+          aria-label="Abrir WhatsApp"
+        >
+          <div>
+            <div className="text-xs font-semibold text-[var(--color-muted)]">Hace tu consulta</div>
+            <div className="text-sm font-semibold text-zinc-900">Chatea por WhatsApp</div>
+          </div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white">
+            <MessageCircle size={22} />
+          </div>
+        </button>
+        <a
+          href={buildWhatsAppLink(`Hola! Quiero consultar por productos de ${brand.name}.`)}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-[0_12px_26px_rgba(17,24,39,0.12)]"
+        >
+          {displayNumber}
+        </a>
+      </div>
     </div>
   )
 }

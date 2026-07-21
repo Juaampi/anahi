@@ -15,6 +15,7 @@ export function CatalogPage({ site = 'anahinails' }: { site?: StoreSite }) {
     search: searchParams.get('q') || '',
     category: searchParams.get('category') || '',
     subcategory: searchParams.get('subcategory') || '',
+    brand: searchParams.get('brand') || '',
     sort: searchParams.get('sort') || 'featured',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
@@ -39,7 +40,7 @@ export function CatalogPage({ site = 'anahinails' }: { site?: StoreSite }) {
     setLocalFilters((current) => ({
       ...current,
       [field]: value,
-      ...(field === 'category' ? { subcategory: '' } : {}),
+      ...(field === 'category' ? { subcategory: '', brand: '' } : {}),
     }))
     startTransition(() => {
       const next = new URLSearchParams(searchParams)
@@ -51,6 +52,7 @@ export function CatalogPage({ site = 'anahinails' }: { site?: StoreSite }) {
       }
       if (field === 'category') {
         next.delete('subcategory')
+        next.delete('brand')
       }
       setSearchParams(next, { replace: true })
     })
@@ -73,6 +75,13 @@ export function CatalogPage({ site = 'anahinails' }: { site?: StoreSite }) {
     },
     [categoryQuery.data, localFilters.category, productQuery.data],
   )
+  const brands = useMemo(
+    () =>
+      Array.from(
+        new Set((productQuery.data || []).map((item) => item.brand).filter(Boolean) as string[]),
+      ).sort((left, right) => left.localeCompare(right)),
+    [productQuery.data],
+  )
 
   return (
     <section className="bg-[#fff7f7] py-10">
@@ -91,6 +100,8 @@ export function CatalogPage({ site = 'anahinails' }: { site?: StoreSite }) {
               category={localFilters.category}
               subcategory={localFilters.subcategory}
               subcategories={subcategories}
+              brand={localFilters.brand}
+              brands={brands}
               sort={localFilters.sort}
               minPrice={localFilters.minPrice}
               maxPrice={localFilters.maxPrice}
