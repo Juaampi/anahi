@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, Menu, Package, Settings, Shapes, ShoppingCart, TicketPercent, Trash2, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useSEO } from '../hooks/use-seo'
 import { api } from '../lib/api'
@@ -568,6 +568,7 @@ export function AdminDashboardPage() {
   const [categoryForm, setCategoryForm] = useState<Partial<Category>>(emptyCategoryForm)
   const [couponForm, setCouponForm] = useState<Partial<DiscountCoupon>>(emptyCouponForm)
   const [settingsForm, setSettingsForm] = useState<StoreSettings | null>(null)
+  const categoryEditorRef = useRef<HTMLFormElement | null>(null)
 
   const productsQuery = useQuery({
     queryKey: ['admin-products', token],
@@ -814,6 +815,20 @@ export function AdminDashboardPage() {
   }
 
   const categorySubcategoriesValue = (categoryForm.subcategories || []).join('\n')
+  const editingCategory = categories.find((category) => category.id === categoryForm.id) || null
+
+  function focusCategoryEditor() {
+    if (typeof window === 'undefined') return
+    window.requestAnimationFrame(() => {
+      categoryEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  function openCategoryEditor(category: Category) {
+    setCategoryForm(category)
+    categoryMutation.reset()
+    focusCategoryEditor()
+  }
 
   function renderSidebar() {
     return (
@@ -1098,119 +1113,253 @@ export function AdminDashboardPage() {
             {activeTab === 'categories' ? (
               <div className="grid gap-6 xl:grid-cols-[360px,minmax(0,1fr)]">
                 <form
-                  className={cn(panelClass, 'p-6')}
+                  ref={categoryEditorRef}
+                  className={cn(panelClass, 'p-6 xl:sticky xl:top-6 xl:self-start')}
                   onSubmit={(event) => {
                     event.preventDefault()
                     categoryMutation.mutate()
                   }}
                 >
-                  <h3 className="font-display text-2xl font-bold text-[var(--color-text)]">Categoría</h3>
+                  <div className="rounded-[1.75rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">
+                          {editingCategory ? 'Modo edición' : 'Nueva categoría'}
+                        </p>
+                        <h3 className="mt-2 font-display text-2xl font-bold text-[var(--color-text)]">
+                          {editingCategory ? editingCategory.name : 'Crear categoría'}
+                        </h3>
+                        <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+                          Separá claramente la categoría principal, el sitio y sus subcategorías para mantener el catálogo ordenado.
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-card)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                        {brandConfigs[categoryForm.site || 'anahinails'].shortName}
+                      </span>
+                    </div>
+
+                    {editingCategory ? (
+                      <div className="mt-4 rounded-[1.5rem] border border-[var(--color-border)] bg-[var(--color-surface-card)] px-4 py-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Categoría seleccionada</p>
+                        <p className="mt-2 text-lg font-semibold text-[var(--color-text)]">{editingCategory.name}</p>
+                        <p className="mt-1 text-sm text-[var(--color-muted)]">
+                          {editingCategory.subcategories.length > 0
+                            ? `${editingCategory.subcategories.length} subcategorías configuradas`
+                            : 'Todavía no tiene subcategorías cargadas.'}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+
                   <div className="mt-5 grid gap-4">
-                    <input
-                      value={categoryForm.name || ''}
-                      onChange={(event) =>
-                        setCategoryForm((current) => ({
-                          ...current,
-                          name: event.target.value,
-                          slug: slugify(event.target.value),
-                        }))
-                      }
-                      placeholder="Nombre"
-                      className={inputClass}
-                    />
-                    <input
-                      value={categoryForm.slug || ''}
-                      onChange={(event) => setCategoryForm((current) => ({ ...current, slug: event.target.value }))}
-                      placeholder="Slug"
-                      className={inputClass}
-                    />
-                    <textarea
-                      value={categoryForm.description || ''}
-                      onChange={(event) => setCategoryForm((current) => ({ ...current, description: event.target.value }))}
-                      placeholder="Descripción"
-                      className={cn(inputClass, 'min-h-28')}
-                    />
-                    <select
-                      value={categoryForm.site || 'anahinails'}
-                      onChange={(event) => setCategoryForm((current) => ({ ...current, site: event.target.value as StoreSite }))}
-                      className={inputClass}
-                    >
-                      {storeSites.map((site) => (
-                        <option key={site} value={site}>
-                          {brandConfigs[site].name}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      value={categoryForm.imageUrl || ''}
-                      onChange={(event) => setCategoryForm((current) => ({ ...current, imageUrl: event.target.value }))}
-                      placeholder="Imagen de categoría"
-                      className={inputClass}
-                    />
-                    <textarea
-                      value={categorySubcategoriesValue}
-                      onChange={(event) =>
-                        setCategoryForm((current) => ({
-                          ...current,
-                          subcategories: parseSubcategories(event.target.value),
-                        }))
-                      }
-                      placeholder="Subcategorías, una por línea o separadas por coma"
-                      className={cn(inputClass, 'min-h-28')}
-                    />
+                    <label>
+                      <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Nombre de la categoría</span>
+                      <input
+                        value={categoryForm.name || ''}
+                        onChange={(event) =>
+                          setCategoryForm((current) => ({
+                            ...current,
+                            name: event.target.value,
+                            slug: slugify(event.target.value),
+                          }))
+                        }
+                        placeholder="Ej: Esmaltes, Herramientas"
+                        className={inputClass}
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Slug</span>
+                      <input
+                        value={categoryForm.slug || ''}
+                        onChange={(event) => setCategoryForm((current) => ({ ...current, slug: event.target.value }))}
+                        placeholder="esmaltes"
+                        className={inputClass}
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Descripción</span>
+                      <textarea
+                        value={categoryForm.description || ''}
+                        onChange={(event) => setCategoryForm((current) => ({ ...current, description: event.target.value }))}
+                        placeholder="Resumen breve para identificar rápidamente la categoría."
+                        className={cn(inputClass, 'min-h-28')}
+                      />
+                    </label>
+                    <label>
+                      <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Sitio</span>
+                      <select
+                        value={categoryForm.site || 'anahinails'}
+                        onChange={(event) => setCategoryForm((current) => ({ ...current, site: event.target.value as StoreSite }))}
+                        className={inputClass}
+                      >
+                        {storeSites.map((site) => (
+                          <option key={site} value={site}>
+                            {brandConfigs[site].name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span className="mb-2 block text-sm font-medium text-[var(--color-muted)]">Imagen de categoría</span>
+                      <input
+                        value={categoryForm.imageUrl || ''}
+                        onChange={(event) => setCategoryForm((current) => ({ ...current, imageUrl: event.target.value }))}
+                        placeholder="https://..."
+                        className={inputClass}
+                      />
+                    </label>
+                    <label>
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className="block text-sm font-medium text-[var(--color-muted)]">Subcategorías</span>
+                        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                          {categoryForm.subcategories?.length || 0} cargadas
+                        </span>
+                      </div>
+                      <textarea
+                        value={categorySubcategoriesValue}
+                        onChange={(event) =>
+                          setCategoryForm((current) => ({
+                            ...current,
+                            subcategories: parseSubcategories(event.target.value),
+                          }))
+                        }
+                        placeholder="Una por línea o separadas por coma"
+                        className={cn(inputClass, 'min-h-32')}
+                      />
+                    </label>
+                    <div className="rounded-[1.5rem] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Vista rápida</p>
+                      {categoryForm.subcategories?.length ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {categoryForm.subcategories.map((subcategory) => (
+                            <span
+                              key={subcategory}
+                              className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-card)] px-3 py-2 text-xs font-semibold text-[var(--color-text)]"
+                            >
+                              {subcategory}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-sm text-[var(--color-muted)]">Las subcategorías que cargues se van a ver acá como referencia visual.</p>
+                      )}
+                    </div>
                     {categoryMutation.isError ? (
                       <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
                         {categoryMutation.error instanceof Error ? categoryMutation.error.message : 'No se pudo guardar la categoría.'}
                       </div>
                     ) : null}
-                    <button className="btn-primary rounded-full px-5 py-4 text-sm font-semibold">
-                      {categoryMutation.isPending ? 'Guardando...' : 'Guardar categoría'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCategoryForm(emptyCategoryForm)
-                        categoryMutation.reset()
-                      }}
-                      className={outlineButtonClass}
-                    >
-                      Nueva categoría
-                    </button>
+                    <div className="flex flex-wrap gap-3">
+                      <button className="btn-primary rounded-full px-5 py-4 text-sm font-semibold">
+                        {categoryMutation.isPending
+                          ? 'Guardando...'
+                          : categoryForm.id
+                            ? 'Guardar cambios'
+                            : 'Guardar categoría'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategoryForm(emptyCategoryForm)
+                          categoryMutation.reset()
+                        }}
+                        className={outlineButtonClass}
+                      >
+                        {categoryForm.id ? 'Cancelar edición' : 'Nueva categoría'}
+                      </button>
+                    </div>
                   </div>
                 </form>
 
                 <div className="grid gap-4">
-                  {categories.map((category) => (
-                    <article key={category.id} className={cn(panelClass, 'flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between')}>
+                  <div className={cn(panelClass, 'p-5')}>
+                    <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
-                        <h3 className="text-lg font-semibold text-[var(--color-text)]">{category.name}</h3>
-                        <p className="text-sm text-[var(--color-muted)]">{category.description}</p>
-                        {category.subcategories.length > 0 ? (
-                          <p className="mt-2 text-sm text-[var(--color-muted)]">
-                            Subcategorías: {category.subcategories.join(', ')}
-                          </p>
-                        ) : null}
-                        <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">
-                          {brandConfigs[category.site].shortName}
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-accent)]">Estructura del catálogo</p>
+                        <h3 className="mt-2 text-xl font-semibold text-[var(--color-text)]">Categorías y subcategorías</h3>
+                        <p className="mt-2 text-sm text-[var(--color-muted)]">
+                          Tocá una categoría para editar su información visual y la lista de subcategorías.
                         </p>
                       </div>
+                      <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-semibold text-[var(--color-text)]">
+                        {categories.length} categorías
+                      </span>
+                    </div>
+                  </div>
+                  {categories.map((category) => (
+                    <article
+                      key={category.id}
+                      className={cn(
+                        panelClass,
+                        'flex flex-col gap-4 p-5 transition sm:p-6',
+                        editingCategory?.id === category.id
+                          ? 'border-[var(--color-accent)] shadow-[0_22px_45px_rgba(17,24,39,0.14)]'
+                          : 'hover:border-[var(--color-accent)]/40',
+                      )}
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-lg font-semibold text-[var(--color-text)]">{category.name}</h3>
+                            <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                              {brandConfigs[category.site].shortName}
+                            </span>
+                            {editingCategory?.id === category.id ? (
+                              <span className="rounded-full bg-[var(--color-accent)] px-3 py-1 text-xs font-semibold text-white">
+                                Editando ahora
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+                            {category.description || 'Sin descripción cargada.'}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            type="button"
+                            onClick={() => openCategoryEditor(category)}
+                            className={outlineButtonClass}
+                          >
+                            {editingCategory?.id === category.id ? 'Seguir editando' : 'Editar'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteCategoryMutation.mutate(category.id)}
+                            className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="rounded-[1.5rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Subcategorías</p>
+                          <span className="text-sm font-semibold text-[var(--color-text)]">{category.subcategories.length}</span>
+                        </div>
+                        {category.subcategories.length > 0 ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {category.subcategories.map((subcategory) => (
+                              <span
+                                key={`${category.id}-${subcategory}`}
+                                className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-card)] px-3 py-2 text-xs font-semibold text-[var(--color-text)]"
+                              >
+                                {subcategory}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-sm text-[var(--color-muted)]">No hay subcategorías definidas todavía.</p>
+                        )}
+                      </div>
+
                       <div className="flex gap-3">
                         <button
                           type="button"
-                          onClick={() => {
-                            setCategoryForm(category)
-                            categoryMutation.reset()
-                          }}
+                          onClick={() => openCategoryEditor(category)}
                           className={outlineButtonClass}
                         >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteCategoryMutation.mutate(category.id)}
-                          className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600"
-                        >
-                          Eliminar
+                          Editar estructura
                         </button>
                       </div>
                     </article>
