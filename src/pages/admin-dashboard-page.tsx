@@ -563,6 +563,7 @@ export function AdminDashboardPage() {
   const [productEditorOpen, setProductEditorOpen] = useState(false)
   const [productSearch, setProductSearch] = useState('')
   const [productListError, setProductListError] = useState('')
+  const [categoryDeleteError, setCategoryDeleteError] = useState('')
   const [form, setForm] = useState<Partial<Product>>(emptyProductForm())
   const [productDrafts, setProductDrafts] = useState<Record<string, { name: string; price: string; compareAtPrice: string; stock: string }>>({})
   const [categoryForm, setCategoryForm] = useState<Partial<Category>>(emptyCategoryForm)
@@ -680,6 +681,7 @@ export function AdminDashboardPage() {
         ? api.updateCategory(token, categoryForm.id, categoryForm)
         : api.saveCategory(token, categoryForm),
     onSuccess: () => {
+      setCategoryDeleteError('')
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       setCategoryForm(emptyCategoryForm)
@@ -688,7 +690,17 @@ export function AdminDashboardPage() {
 
   const deleteCategoryMutation = useMutation({
     mutationFn: (id: string) => api.deleteCategory(token, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-categories'] }),
+    onSuccess: () => {
+      setCategoryDeleteError('')
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      if (categoryForm.id) {
+        setCategoryForm(emptyCategoryForm)
+      }
+    },
+    onError: (error) => {
+      setCategoryDeleteError(error instanceof Error ? error.message : 'No se pudo eliminar la categoría.')
+    },
   })
 
   const couponMutation = useMutation({
@@ -1285,6 +1297,11 @@ export function AdminDashboardPage() {
                         {categories.length} categorías
                       </span>
                     </div>
+                    {categoryDeleteError ? (
+                      <div className="mt-4 rounded-[1.25rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                        {categoryDeleteError}
+                      </div>
+                    ) : null}
                   </div>
                   {categories.map((category) => (
                     <article

@@ -549,9 +549,32 @@ async function createOrUpdateCategory(
 async function deleteCategory(id: string) {
   const sql = await ensureDatabase()
   if (!sql) {
+    const linkedProducts = getMemoryState().products.filter((item) => item.categoryId === id)
+    if (linkedProducts.length > 0) {
+      throw new Error(`No se puede eliminar la categoría porque tiene ${linkedProducts.length} producto(s) asociado(s).`)
+    }
+
+    const exists = getMemoryState().categories.some((item) => item.id === id)
+    if (!exists) {
+      throw new Error('La categoría no existe o ya fue eliminada.')
+    }
+
     getMemoryState().categories = getMemoryState().categories.filter((item) => item.id !== id)
     return
   }
+
+  const categoryRows = await sql.query('SELECT id FROM categories WHERE id = $1 LIMIT 1', [id])
+  if (!categoryRows[0]?.id) {
+    throw new Error('La categoría no existe o ya fue eliminada.')
+  }
+
+  const linkedRows = await sql.query('SELECT COUNT(*)::int AS count FROM products WHERE category_id = $1', [id])
+  const linkedCount = Number(linkedRows[0]?.count || 0)
+
+  if (linkedCount > 0) {
+    throw new Error(`No se puede eliminar la categoría porque tiene ${linkedCount} producto(s) asociado(s).`)
+  }
+
   await sql.query('DELETE FROM categories WHERE id = $1', [id])
 }
 
