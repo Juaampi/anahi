@@ -1114,7 +1114,7 @@ export function AdminDashboardPage() {
               <div className="grid gap-6 xl:grid-cols-[360px,minmax(0,1fr)]">
                 <form
                   ref={categoryEditorRef}
-                  className={cn(panelClass, 'p-6 xl:sticky xl:top-6 xl:self-start')}
+                  className={cn(panelClass, 'p-6')}
                   onSubmit={(event) => {
                     event.preventDefault()
                     categoryMutation.mutate()
