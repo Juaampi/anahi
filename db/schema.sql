@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS products (
   compare_at_price NUMERIC(12,2),
   stock INTEGER NOT NULL DEFAULT 0,
   featured BOOLEAN NOT NULL DEFAULT FALSE,
+  visible BOOLEAN NOT NULL DEFAULT TRUE,
   badges JSONB NOT NULL DEFAULT '[]'::jsonb,
   image_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
   variants JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -74,6 +75,16 @@ CREATE TABLE IF NOT EXISTS discount_coupons (
   ends_at TIMESTAMPTZ,
   usage_limit INTEGER,
   usage_count INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS customers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  roulette_claimed_at TIMESTAMPTZ,
+  roulette_coupon_id TEXT REFERENCES discount_coupons(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

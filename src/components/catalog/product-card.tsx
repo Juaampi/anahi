@@ -22,6 +22,7 @@ export function ProductCard({ product }: { product: Product }) {
   const addItem = useCartStore((state) => state.addItem)
   const firstBadge = product.badges[0]
   const hasDiscount = Boolean(product.compareAtPrice && product.compareAtPrice > product.price)
+  const discountPercent = hasDiscount ? Math.round((1 - product.price / (product.compareAtPrice || product.price)) * 100) : 0
 
   return (
     <article className="overflow-hidden rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface-card)] p-4 shadow-[0_10px_24px_rgba(17,24,39,0.04)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_34px_rgba(17,24,39,0.09)]">
@@ -69,6 +70,7 @@ export function ProductCard({ product }: { product: Product }) {
               {formatCurrency(product.compareAtPrice)}
             </p>
           ) : null}
+          {hasDiscount ? <p className="mt-1 text-sm font-bold text-emerald-700">Precio promocional · {discountPercent}% OFF</p> : null}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">

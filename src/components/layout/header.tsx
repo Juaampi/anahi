@@ -77,10 +77,10 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
         <div className="hidden items-center gap-3 lg:flex">
           <ThemeToggle value={theme} onChange={onThemeChange} />
           <Link
-            to="/admin"
+            to="/bienvenida"
             className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-card)] px-4 py-2 text-sm font-medium text-[var(--color-primary)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
           >
-            Iniciar sesión
+            Beneficio de bienvenida
           </Link>
           <Link
             to={buildStorePath(currentSite, '/productos')}
@@ -129,11 +129,11 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
               {brand.productLabel}
             </Link>
             <Link
-              to="/admin"
+              to="/bienvenida"
               className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-center text-sm font-medium text-[var(--color-primary)]"
               onClick={() => setOpen(false)}
             >
-              Iniciar sesión
+              Beneficio de bienvenida
             </Link>
           </div>
         </div>

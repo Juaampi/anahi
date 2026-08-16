@@ -18,3 +18,13 @@ export function signAdminToken(payload: { id: string; email: string; name: strin
 export function verifyAdminToken(token: string) {
   return jwt.verify(token, secret) as { id: string; email: string; name: string }
 }
+
+export function signCustomerToken(payload: { id: string; email: string; name: string }) {
+  return jwt.sign({ ...payload, role: 'customer' }, secret, { expiresIn: '30d' })
+}
+
+export function verifyCustomerToken(token: string) {
+  const payload = jwt.verify(token, secret) as { id: string; email: string; name: string; role?: string }
+  if (payload.role !== 'customer') throw new Error('Unauthorized')
+  return payload
+}

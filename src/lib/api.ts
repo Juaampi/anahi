@@ -122,6 +122,14 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
+  registerCustomer: (name: string, email: string, password: string) =>
+    request<{ token: string; customer: { id: string; name: string; email: string }; rouletteAvailable: boolean }>('/customers/register', {
+      method: 'POST', body: JSON.stringify({ name, email, password }),
+    }),
+  spinRoulette: (token: string) =>
+    request<{ code: string; value: number; type: 'percentage' }>('/customers/roulette/spin', {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` },
+    }),
   adminProducts: (token: string) =>
     request<Product[]>('/admin/products', {
       headers: { Authorization: `Bearer ${token}` },
@@ -137,6 +145,10 @@ export const api = {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(product),
+    }),
+  bulkUpdatePrices: (token: string, payload: { productIds: string[]; operation: 'set' | 'increase_percent' | 'decrease_percent' | 'increase_fixed' | 'decrease_fixed'; value: number }) =>
+    request<{ affected: number }>('/admin/products/bulk-price', {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload),
     }),
   deleteProduct: (token: string, id: string) =>
     request<{ success: true }>(`/admin/products/${id}`, {

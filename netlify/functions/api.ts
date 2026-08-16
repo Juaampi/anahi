@@ -3,7 +3,7 @@ import { v2 as cloudinary } from 'cloudinary'
 import crypto from 'node:crypto'
 import MercadoPagoConfig, { Preference } from 'mercadopago'
 import { ensureDatabase, getMemoryAdmin, getMemoryState } from './_lib/db'
-import { signAdminToken, verifyAdminToken, verifyPassword } from './_lib/auth'
+import { hashPassword, signAdminToken, signCustomerToken, verifyAdminToken, verifyCustomerToken, verifyPassword } from './_lib/auth'
 
 type ProductInput = {
   id?: string
@@ -16,6 +16,7 @@ type ProductInput = {
   compareAtPrice?: number | null
   stock?: number
   featured?: boolean
+  visible?: boolean
   badges?: string[]
   imageUrls?: string[]
   categoryId?: string
@@ -23,6 +24,12 @@ type ProductInput = {
   subcategory?: string
   brand?: string
   variants?: Array<{ id?: string; name?: string; color?: string; imageUrl?: string; stock?: number }>
+}
+
+type BulkPriceInput = {
+  productIds?: string[]
+  operation?: 'set' | 'increase_percent' | 'decrease_percent' | 'increase_fixed' | 'decrease_fixed'
+  value?: number
 }
 
 type CategoryInput = {
@@ -115,6 +122,12 @@ function requireAdmin(event: Parameters<Handler>[0]) {
   return verifyAdminToken(token)
 }
 
+function requireCustomer(event: Parameters<Handler>[0]) {
+  const token = getToken(event)
+  if (!token) throw new Error('Unauthorized')
+  return verifyCustomerToken(token)
+}
+
 function normalizeProduct(row: DataRow) {
   return {
     id: row.id,
@@ -127,6 +140,7 @@ function normalizeProduct(row: DataRow) {
     compareAtPrice: row.compare_at_price === null ? null : Number(row.compare_at_price ?? row.compareAtPrice),
     stock: Number(row.stock),
     featured: Boolean(row.featured),
+    visible: row.visible !== false,
     badges: Array.isArray(row.badges) ? row.badges : JSON.parse(row.badges || '[]'),
     imageUrls: Array.isArray(row.image_urls)
       ? row.image_urls
@@ -290,9 +304,11 @@ async function listProducts(searchParams: URLSearchParams) {
   const minPrice = Number(searchParams.get('minPrice') || 0)
   const maxPrice = Number(searchParams.get('maxPrice') || 0)
   const sort = searchParams.get('sort') || 'featured'
+  const includeHidden = searchParams.get('includeHidden') === 'true'
 
   if (!sql) {
     let items = [...getMemoryState().products]
+    if (!includeHidden) items = items.filter((item) => item.visible !== false)
     if (site) items = items.filter((item) => item.site === site)
     if (category) items = items.filter((item) => item.categoryName.toLowerCase().includes(category.toLowerCase()) || item.categoryId === category || item.slug.includes(category))
     if (subcategory) items = items.filter((item) => (item.subcategory || '').toLowerCase() === subcategory.toLowerCase())
@@ -311,6 +327,7 @@ async function listProducts(searchParams: URLSearchParams) {
     WHERE 1=1
   `
   const params: unknown[] = []
+  if (!includeHidden) query += ' AND p.visible = TRUE'
   if (category) {
     params.push(category)
     query += ` AND (c.slug = $${params.length} OR p.category_id = $${params.length})`
@@ -354,15 +371,15 @@ async function listProducts(searchParams: URLSearchParams) {
   return rows.map(normalizeProduct)
 }
 
-async function getProductBySlug(slug: string) {
+async function getProductBySlug(slug: string, includeHidden = false) {
   const sql = await ensureDatabase()
-  if (!sql) return getMemoryState().products.find((item) => item.slug === slug) || null
+  if (!sql) return getMemoryState().products.find((item) => item.slug === slug && (includeHidden || item.visible !== false)) || null
 
   const rows = await sql.query(
     `SELECT p.*, c.name AS category_name
      FROM products p
      INNER JOIN categories c ON c.id = p.category_id
-     WHERE p.slug = $1`,
+     WHERE p.slug = $1 ${includeHidden ? '' : 'AND p.visible = TRUE'}`,
     [slug],
   )
   return rows[0] ? normalizeProduct(rows[0]) : null
@@ -392,6 +409,7 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
       compareAtPrice: input.compareAtPrice || null,
       stock: Number(input.stock || 0),
       featured: Boolean(input.featured),
+      visible: input.visible ?? existing?.visible ?? true,
       badges: input.badges || [],
       imageUrls: input.imageUrls?.filter(Boolean) || [],
       variants: normalizedVariants,
@@ -428,8 +446,8 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
     await sql.query(
       `UPDATE products
        SET slug = $1, sku = $2, name = $3, description = $4, short_description = $5, price = $6, compare_at_price = $7,
-           stock = $8, featured = $9, badges = $10::jsonb, image_urls = $11::jsonb, variants = $12::jsonb, subcategory = $13, brand = $14, site = $15, category_id = $16
-       WHERE id = $17`,
+           stock = $8, featured = $9, visible = $10, badges = $11::jsonb, image_urls = $12::jsonb, variants = $13::jsonb, subcategory = $14, brand = $15, site = $16, category_id = $17
+       WHERE id = $18`,
       [
         input.slug,
         input.sku,
@@ -440,6 +458,7 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
         input.compareAtPrice,
         input.stock,
         input.featured,
+        input.visible ?? true,
         JSON.stringify(input.badges || []),
         JSON.stringify(input.imageUrls || []),
         JSON.stringify(normalizedVariants),
@@ -450,14 +469,14 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
         id,
       ],
     )
-    return getProductBySlug(input.slug || '')
+    return getProductBySlug(input.slug || '', true)
   }
 
   const newId = createId('prod')
   await sql.query(
     `INSERT INTO products
-      (id, slug, sku, name, description, short_description, price, compare_at_price, stock, featured, badges, image_urls, variants, subcategory, brand, site, category_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::jsonb, $13::jsonb, $14, $15, $16, $17)`,
+      (id, slug, sku, name, description, short_description, price, compare_at_price, stock, featured, visible, badges, image_urls, variants, subcategory, brand, site, category_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13::jsonb, $14::jsonb, $15, $16, $17, $18)`,
     [
       newId,
       input.slug,
@@ -469,6 +488,7 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
       input.compareAtPrice,
       input.stock,
       input.featured,
+      input.visible ?? true,
       JSON.stringify(input.badges || []),
       JSON.stringify(input.imageUrls || []),
       JSON.stringify(normalizedVariants),
@@ -478,7 +498,29 @@ async function createOrUpdateProduct(input: ProductInput, id?: string) {
       input.categoryId,
     ],
   )
-  return getProductBySlug(input.slug || '')
+  return getProductBySlug(input.slug || '', true)
+}
+
+async function bulkUpdatePrices(input: BulkPriceInput) {
+  const ids = [...new Set((input.productIds || []).filter(Boolean))]
+  const value = Number(input.value)
+  const operation = input.operation
+  if (!ids.length) throw new Error('Selecciona al menos un producto.')
+  if (!Number.isFinite(value) || value < 0 || !operation) throw new Error('Indica una modificación válida.')
+  const factor = operation === 'increase_percent' ? 1 + value / 100 : operation === 'decrease_percent' ? 1 - value / 100 : 1
+  const calculate = (price: number) =>
+    roundMoney(operation === 'set' ? value : operation === 'increase_fixed' ? price + value : operation === 'decrease_fixed' ? price - value : price * factor)
+  const sql = await ensureDatabase()
+  if (!sql) {
+    const selected = getMemoryState().products.filter((product) => ids.includes(product.id))
+    selected.forEach((product) => { product.price = calculate(Number(product.price)) })
+    return { affected: selected.length }
+  }
+  const rows = await sql.query('SELECT id, price FROM products WHERE id = ANY($1::text[])', [ids])
+  for (const product of rows) {
+    await sql.query('UPDATE products SET price = $1 WHERE id = $2', [calculate(Number(product.price)), product.id])
+  }
+  return { affected: rows.length }
 }
 
 async function deleteProduct(id: string) {
@@ -1050,12 +1092,49 @@ export const handler: Handler = async (event) => {
       return json(200, { token: signAdminToken(normalized), user: normalized })
     }
 
+    if (method === 'POST' && path === '/customers/register') {
+      const body = parseBody<{ name?: string; email?: string; password?: string }>(event.body)
+      const name = (body.name || '').trim()
+      const email = (body.email || '').trim().toLowerCase()
+      if (!name || !email || !body.password || body.password.length < 8) throw new Error('Completa nombre, email y una contraseña de al menos 8 caracteres.')
+      const sql = await ensureDatabase()
+      if (!sql) throw new Error('El registro requiere la base de datos configurada.')
+      const existing = await sql.query('SELECT id FROM customers WHERE LOWER(email) = $1 LIMIT 1', [email])
+      if (existing[0]) throw new Error('Ya existe una cuenta con este email.')
+      const customer = { id: createId('customer'), name, email }
+      await sql.query('INSERT INTO customers (id, name, email, password_hash) VALUES ($1, $2, $3, $4)', [customer.id, name, email, await hashPassword(body.password)])
+      return json(200, { token: signCustomerToken(customer), customer, rouletteAvailable: true })
+    }
+
+    if (method === 'POST' && path === '/customers/roulette/spin') {
+      const customer = requireCustomer(event)
+      const sql = await ensureDatabase()
+      if (!sql) throw new Error('La ruleta requiere la base de datos configurada.')
+      const rows = await sql.query('SELECT roulette_coupon_id FROM customers WHERE id = $1 LIMIT 1', [customer.id])
+      if (!rows[0]) throw new Error('La cuenta no existe.')
+      if (rows[0].roulette_coupon_id) throw new Error('Esta cuenta ya usó su giro.')
+      const rewards = [5, 10, 15, 20]
+      const value = rewards[crypto.randomInt(rewards.length)]
+      const code = `BIENVENIDA-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
+      const couponId = createId('coupon')
+      await sql.query(
+        "INSERT INTO discount_coupons (id, code, description, type, value, active, usage_limit) VALUES ($1, $2, $3, 'percentage', $4, TRUE, 1)",
+        [couponId, code, `Premio de bienvenida: ${value}%`, value],
+      )
+      const updated = await sql.query('UPDATE customers SET roulette_claimed_at = NOW(), roulette_coupon_id = $1 WHERE id = $2 AND roulette_coupon_id IS NULL RETURNING id', [couponId, customer.id])
+      if (!updated[0]) throw new Error('Esta cuenta ya usó su giro.')
+      return json(200, { code, value, type: 'percentage' })
+    }
+
     if (path.startsWith('/admin')) {
       requireAdmin(event)
     }
 
     if (method === 'GET' && path === '/admin/products') {
-      return json(200, await listProducts(new URLSearchParams('sort=featured')))
+      return json(200, await listProducts(new URLSearchParams('sort=featured&includeHidden=true')))
+    }
+    if (method === 'POST' && path === '/admin/products/bulk-price') {
+      return json(200, await bulkUpdatePrices(parseBody(event.body)))
     }
     if (method === 'POST' && path === '/admin/products') {
       return json(200, await createOrUpdateProduct(parseBody(event.body)))

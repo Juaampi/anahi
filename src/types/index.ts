@@ -30,6 +30,7 @@ export interface Product {
   compareAtPrice?: number | null
   stock: number
   featured: boolean
+  visible?: boolean
   badges: ProductBadge[]
   imageUrls: string[]
   categoryId: string

@@ -61,6 +61,7 @@ export async function ensureDatabase() {
       compare_at_price NUMERIC(12,2),
       stock INTEGER NOT NULL DEFAULT 0,
       featured BOOLEAN NOT NULL DEFAULT FALSE,
+      visible BOOLEAN NOT NULL DEFAULT TRUE,
       badges JSONB NOT NULL DEFAULT '[]'::jsonb,
       image_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
       variants JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -114,6 +115,15 @@ export async function ensureDatabase() {
       usage_count INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`,
+    `CREATE TABLE IF NOT EXISTS customers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      roulette_claimed_at TIMESTAMPTZ,
+      roulette_coupon_id TEXT REFERENCES discount_coupons(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
     `CREATE TABLE IF NOT EXISTS detail_pedido (
       id TEXT PRIMARY KEY,
       order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
@@ -144,6 +154,7 @@ export async function ensureDatabase() {
     'ALTER TABLE products ADD COLUMN IF NOT EXISTS subcategory TEXT',
     'ALTER TABLE products ADD COLUMN IF NOT EXISTS brand TEXT',
     "ALTER TABLE products ADD COLUMN IF NOT EXISTS site TEXT NOT NULL DEFAULT 'anahinails'",
+    'ALTER TABLE products ADD COLUMN IF NOT EXISTS visible BOOLEAN NOT NULL DEFAULT TRUE',
   ]
 
   for (const statement of setupStatements) {
@@ -152,13 +163,7 @@ export async function ensureDatabase() {
 
   for (const category of seedCategories) {
     const existingCategory = await sql.query('SELECT id FROM categories WHERE id = $1 LIMIT 1', [category.id])
-    if (existingCategory[0]?.id) {
-      await sql.query(
-        'UPDATE categories SET slug = $1, name = $2, description = $3, site = $4, subcategories = $5::jsonb WHERE id = $6',
-        [category.slug, category.name, category.description, category.site, JSON.stringify(category.subcategories || []), category.id],
-      )
-      continue
-    }
+    if (existingCategory[0]?.id) continue
 
     await sql.query(
       'INSERT INTO categories (id, slug, name, description, site, subcategories) VALUES ($1, $2, $3, $4, $5, $6::jsonb)',
@@ -203,12 +208,7 @@ export async function ensureDatabase() {
     'SELECT id FROM users_admin WHERE id = $1 OR LOWER(email) = LOWER($2) LIMIT 1',
     ['admin-seed', seedEmail],
   )
-  if (existingSeed[0]?.id) {
-    await sql.query(
-      'UPDATE users_admin SET id = $1, name = $2, email = $3, password_hash = $4 WHERE id = $5',
-      ['admin-seed', seedName, seedEmail, seedHash, existingSeed[0].id],
-    )
-  } else {
+  if (!existingSeed[0]?.id) {
     await sql.query(
       'INSERT INTO users_admin (id, name, email, password_hash) VALUES ($1, $2, $3, $4)',
       ['admin-seed', seedName, seedEmail, seedHash],
@@ -216,25 +216,7 @@ export async function ensureDatabase() {
   }
 
   const existingSettings = await sql.query('SELECT id FROM store_settings WHERE id = $1 LIMIT 1', ['main'])
-  if (existingSettings[0]?.id) {
-    await sql.query(
-      `UPDATE store_settings
-       SET standard_shipping_label = $1, standard_shipping_cost = $2, branch_shipping_enabled = $3,
-           branch_shipping_label = $4, branch_shipping_cost = $5, free_shipping_enabled = $6,
-           free_shipping_threshold = $7, updated_at = NOW()
-       WHERE id = $8`,
-      [
-        memoryState.settings.standardShippingLabel,
-        memoryState.settings.standardShippingCost,
-        memoryState.settings.branchShippingEnabled,
-        memoryState.settings.branchShippingLabel,
-        memoryState.settings.branchShippingCost,
-        memoryState.settings.freeShippingEnabled,
-        memoryState.settings.freeShippingThreshold,
-        'main',
-      ],
-    )
-  } else {
+  if (!existingSettings[0]?.id) {
     await sql.query(
       `INSERT INTO store_settings
         (id, standard_shipping_label, standard_shipping_cost, branch_shipping_enabled, branch_shipping_label, branch_shipping_cost, free_shipping_enabled, free_shipping_threshold)

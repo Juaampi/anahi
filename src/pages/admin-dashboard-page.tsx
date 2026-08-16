@@ -50,6 +50,7 @@ const emptyProductForm = (): Partial<Product> => ({
   imageUrls: [''],
   badges: [],
   featured: false,
+  visible: true,
   categoryId: '',
   site: 'anahinails',
   subcategory: '',
@@ -347,6 +348,12 @@ function ProductEditorModal({
                 Producto destacado
               </span>
             </label>
+            <label className="flex items-end">
+              <span className="flex w-full items-center gap-3 rounded-2xl bg-[var(--color-surface)] px-4 py-3 text-sm font-medium text-[var(--color-text)]">
+                <input type="checkbox" checked={form.visible !== false} onChange={(event) => onChange((current) => ({ ...current, visible: event.target.checked }))} className="h-4 w-4 accent-[var(--color-accent)]" />
+                Visible en tienda
+              </span>
+            </label>
           </div>
 
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr),280px]">
@@ -563,6 +570,9 @@ export function AdminDashboardPage() {
   const [productEditorOpen, setProductEditorOpen] = useState(false)
   const [productSearch, setProductSearch] = useState('')
   const [productListError, setProductListError] = useState('')
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
+  const [bulkOperation, setBulkOperation] = useState<'set' | 'increase_percent' | 'decrease_percent' | 'increase_fixed' | 'decrease_fixed'>('set')
+  const [bulkValue, setBulkValue] = useState('')
   const [categoryDeleteError, setCategoryDeleteError] = useState('')
   const [form, setForm] = useState<Partial<Product>>(emptyProductForm())
   const [productDrafts, setProductDrafts] = useState<Record<string, { name: string; price: string; compareAtPrice: string; stock: string }>>({})
@@ -673,6 +683,12 @@ export function AdminDashboardPage() {
     onError: (error) => {
       setProductListError(error instanceof Error ? error.message : 'No se pudo guardar la edición rápida.')
     },
+  })
+
+  const bulkPriceMutation = useMutation({
+    mutationFn: () => api.bulkUpdatePrices(token, { productIds: selectedProductIds, operation: bulkOperation, value: Number(bulkValue) }),
+    onSuccess: () => { setSelectedProductIds([]); setBulkValue(''); setProductListError(''); refreshProducts() },
+    onError: (error) => setProductListError(error instanceof Error ? error.message : 'No se pudieron actualizar los precios.'),
   })
 
   const categoryMutation = useMutation({
@@ -981,6 +997,20 @@ export function AdminDashboardPage() {
                   </div>
                 </div>
 
+                {selectedProductIds.length > 0 ? (
+                  <div className={cn(panelClass, 'flex flex-col gap-3 p-5 lg:flex-row lg:items-center')}>
+                    <p className="text-sm font-semibold text-[var(--color-text)]">{selectedProductIds.length} producto(s) seleccionado(s)</p>
+                    <select value={bulkOperation} onChange={(event) => setBulkOperation(event.target.value as typeof bulkOperation)} className={inputClass}>
+                      <option value="set">Establecer precio</option><option value="increase_percent">Aumentar %</option><option value="decrease_percent">Disminuir %</option><option value="increase_fixed">Aumentar monto</option><option value="decrease_fixed">Disminuir monto</option>
+                    </select>
+                    <input type="number" min="0" value={bulkValue} onChange={(event) => setBulkValue(event.target.value)} placeholder="Valor" className={inputClass} />
+                    <button type="button" disabled={!bulkValue || bulkPriceMutation.isPending} onClick={() => {
+                      const labels = { set: 'establecer el precio', increase_percent: 'aumentar por porcentaje', decrease_percent: 'disminuir por porcentaje', increase_fixed: 'aumentar por monto', decrease_fixed: 'disminuir por monto' }
+                      if (window.confirm(`Vas a ${labels[bulkOperation]} de ${selectedProductIds.length} producto(s). ¿Confirmás el cambio?`)) bulkPriceMutation.mutate()
+                    }} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">{bulkPriceMutation.isPending ? 'Aplicando...' : 'Confirmar cambio'}</button>
+                  </div>
+                ) : null}
+
                 {productMutation.isError ? (
                   <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
                     {productMutation.error instanceof Error ? productMutation.error.message : 'No se pudo guardar el producto.'}
@@ -1006,6 +1036,7 @@ export function AdminDashboardPage() {
                       <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-3">
+                            <input type="checkbox" checked={selectedProductIds.includes(product.id)} onChange={(event) => setSelectedProductIds((current) => event.target.checked ? [...current, product.id] : current.filter((id) => id !== product.id))} className="h-5 w-5 accent-[var(--color-accent)]" aria-label={`Seleccionar ${product.name}`} />
                             <input
                               value={draft.name}
                               onChange={(event) => updateProductDraft(product, 'name', event.target.value)}
@@ -1017,6 +1048,7 @@ export function AdminDashboardPage() {
                             <span className="rounded-full bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-muted)]">
                               {brandConfigs[product.site].shortName}
                             </span>
+                            <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', product.visible ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>{product.visible ? 'Visible' : 'Oculto'}</span>
                           </div>
                           <p className="mt-2 text-sm text-[var(--color-muted)]">
                             {[product.categoryName, product.subcategory, product.brand].filter(Boolean).join(' · ')}
@@ -1104,6 +1136,9 @@ export function AdminDashboardPage() {
                           </button>
                           <button type="button" onClick={() => openEditProduct(product)} className={outlineButtonClass}>
                             Editar
+                          </button>
+                          <button type="button" onClick={() => quickEditMutation.mutate({ ...product, visible: !product.visible })} className={outlineButtonClass}>
+                            {product.visible ? 'Ocultar' : 'Mostrar'}
                           </button>
                           <button
                             type="button"

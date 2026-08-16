@@ -17,6 +17,7 @@ import { QueryProvider } from './providers/query-provider'
 import { useCartStore } from './store/cart-store'
 import { useTheme } from './hooks/use-theme'
 import { IntroSelectorPage } from './pages/intro-selector-page'
+import { WelcomeRoulettePage } from './pages/welcome-roulette-page'
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -52,6 +53,7 @@ function Shell() {
             <Route path="/productos/:slug" element={<ProductPage />} />
             <Route path="/carrito" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/bienvenida" element={<WelcomeRoulettePage />} />
             <Route
               path="/gracias"
               element={
