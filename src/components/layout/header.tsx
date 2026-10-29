@@ -1,6 +1,8 @@
-import { Menu, ShoppingBag } from 'lucide-react'
+import { ChevronDown, Menu, ShoppingBag } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link, NavLink, useLocation } from 'react-router-dom'
+import { api } from '../../lib/api'
 import { brandConfigs, storeSites } from '../../lib/constants'
 import { buildStorePath, cn } from '../../lib/utils'
 import { useCartStore } from '../../store/cart-store'
@@ -18,6 +20,11 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
   const items = useCartStore((state) => state.items)
   const currentSite = storeSites.find((site) => location.pathname.startsWith(`/${site}`)) || 'anahinails'
   const brand = brandConfigs[currentSite]
+  const categoriesQuery = useQuery({
+    queryKey: ['categories', currentSite],
+    queryFn: () => api.categories(currentSite),
+  })
+  const categories = categoriesQuery.data || []
   const cartCount = useMemo(
     () => items.reduce((acc, item) => acc + item.quantity, 0),
     [items],
@@ -27,6 +34,11 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
     { label: 'Todos los productos', to: buildStorePath(currentSite, '/productos') },
     { label: 'Nuevos ingresos', to: `${buildStorePath(currentSite, '/productos')}?sort=newest` },
   ]
+  const categoryPath = (category: string, subcategory?: string) => {
+    const params = new URLSearchParams({ category })
+    if (subcategory) params.set('subcategory', subcategory)
+    return `${buildStorePath(currentSite, '/productos')}?${params.toString()}`
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface-card)_90%,transparent)] shadow-[0_10px_30px_rgba(17,24,39,0.06)] backdrop-blur">
@@ -71,6 +83,39 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
                 {link.label}
               </NavLink>
             ))}
+            {categories.length > 0 ? (
+              <details className="group relative">
+                <summary className="flex cursor-pointer list-none items-center gap-1 rounded-full px-4 py-2 text-sm font-medium text-[var(--color-muted)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-primary)] [&::-webkit-details-marker]:hidden">
+                  Categorías
+                  <ChevronDown size={15} className="transition group-open:rotate-180" />
+                </summary>
+                <div className="absolute left-0 top-full z-50 mt-3 grid w-[min(42rem,calc(100vw-3rem))] grid-cols-2 gap-2 rounded-[1.5rem] border border-[var(--color-border)] bg-[var(--color-surface-card)] p-3 shadow-[0_18px_40px_rgba(17,24,39,0.16)]">
+                  {categories.map((category) => (
+                    <div key={category.id} className="rounded-2xl p-2 hover:bg-[var(--color-surface)]">
+                      <Link
+                        to={categoryPath(category.slug)}
+                        className="block px-2 py-1 text-sm font-semibold text-[var(--color-primary)]"
+                      >
+                        {category.name}
+                      </Link>
+                      {category.subcategories.length > 0 ? (
+                        <div className="mt-1 flex flex-wrap gap-1 px-2">
+                          {category.subcategories.map((subcategory) => (
+                            <Link
+                              key={subcategory}
+                              to={categoryPath(category.slug, subcategory)}
+                              className="rounded-full px-2 py-1 text-xs text-[var(--color-muted)] transition hover:bg-[var(--color-surface-card)] hover:text-[var(--color-accent)]"
+                            >
+                              {subcategory}
+                            </Link>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </div>
         </nav>
 
@@ -121,6 +166,47 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
                 {link.label}
               </NavLink>
             ))}
+            {categories.length > 0 ? (
+              <div className="rounded-[1.5rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+                <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Categorías</p>
+                <div className="grid gap-1">
+                  {categories.map((category) => (
+                    category.subcategories.length > 0 ? <details key={category.id} className="rounded-xl bg-[var(--color-surface-card)] px-2">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-3 text-sm font-semibold text-[var(--color-primary)] [&::-webkit-details-marker]:hidden">
+                        <span>{category.name}</span>
+                        {category.subcategories.length > 0 ? <ChevronDown size={16} /> : null}
+                      </summary>
+                      <div className="flex flex-wrap gap-2 border-t border-[var(--color-border)] py-3">
+                        <Link
+                          to={categoryPath(category.slug)}
+                          onClick={() => setOpen(false)}
+                          className="rounded-full bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-white"
+                        >
+                          Ver todo
+                        </Link>
+                        {category.subcategories.map((subcategory) => (
+                          <Link
+                            key={subcategory}
+                            to={categoryPath(category.slug, subcategory)}
+                            onClick={() => setOpen(false)}
+                            className="rounded-full bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-[var(--color-muted)]"
+                          >
+                            {subcategory}
+                          </Link>
+                        ))}
+                      </div>
+                    </details> : <Link
+                      key={category.id}
+                      to={categoryPath(category.slug)}
+                      onClick={() => setOpen(false)}
+                      className="rounded-xl bg-[var(--color-surface-card)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]"
+                    >
+                      {category.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <Link
               to={buildStorePath(currentSite, '/productos')}
               className="btn-primary rounded-full px-4 py-3 text-center text-sm font-semibold"
