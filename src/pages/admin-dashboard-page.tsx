@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Menu, Package, Settings, Shapes, ShoppingCart, TicketPercent, Trash2, X } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { type ReactNode, useMemo, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useSEO } from '../hooks/use-seo'
 import { api } from '../lib/api'
@@ -12,6 +12,7 @@ import type {
   Product,
   ProductBadge,
   ProductVariant,
+  Order,
   StoreSettings,
   StoreSite,
 } from '../types'
@@ -546,6 +547,46 @@ function ProductEditorModal({
   )
 }
 
+function AdminModal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+  return <div className="fixed inset-0 z-50 bg-black/50 p-3 sm:p-6" onClick={onClose}>
+    <div className="mx-auto max-h-full max-w-3xl overflow-y-auto rounded-[2rem] bg-[var(--color-surface-card)] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.22)]" onClick={(event) => event.stopPropagation()}>
+      <div className="mb-6 flex items-center justify-between gap-4"><h3 className="font-display text-2xl font-black text-[var(--color-text)]">{title}</h3><button type="button" onClick={onClose} className="rounded-full border border-[var(--color-border)] p-3"><X size={18} /></button></div>
+      {children}
+    </div>
+  </div>
+}
+
+function CategoryEditorModal({ form, pending, onChange, onSubmit, onClose }: { form: Partial<Category>; pending: boolean; onChange: (value: Partial<Category>) => void; onSubmit: () => void; onClose: () => void }) {
+  const subcategoriesValue = (form.subcategories || []).join('\n')
+  return <AdminModal title={form.id ? 'Editar categoría' : 'Nueva categoría'} onClose={onClose}>
+    <form className="grid gap-4" onSubmit={(event) => { event.preventDefault(); onSubmit() }}>
+      <label><span className="mb-2 block text-sm font-medium">Nombre</span><input value={form.name || ''} onChange={(event) => onChange({ ...form, name: event.target.value, slug: slugify(event.target.value) })} className={inputClass} required /></label>
+      <label><span className="mb-2 block text-sm font-medium">Slug</span><input value={form.slug || ''} onChange={(event) => onChange({ ...form, slug: event.target.value })} className={inputClass} required /></label>
+      <label><span className="mb-2 block text-sm font-medium">Descripción</span><textarea value={form.description || ''} onChange={(event) => onChange({ ...form, description: event.target.value })} className={cn(inputClass, 'min-h-28')} /></label>
+      <div className="grid gap-4 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-medium">Sitio</span><select value={form.site || 'anahinails'} onChange={(event) => onChange({ ...form, site: event.target.value as StoreSite })} className={inputClass}>{storeSites.map((site) => <option key={site} value={site}>{brandConfigs[site].name}</option>)}</select></label><label><span className="mb-2 block text-sm font-medium">Imagen</span><input value={form.imageUrl || ''} onChange={(event) => onChange({ ...form, imageUrl: event.target.value })} placeholder="https://..." className={inputClass} /></label></div>
+      <label><span className="mb-2 block text-sm font-medium">Subcategorías</span><textarea value={subcategoriesValue} onChange={(event) => onChange({ ...form, subcategories: parseSubcategories(event.target.value) })} placeholder="Una por línea o separadas por coma" className={cn(inputClass, 'min-h-32')} /></label>
+      <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className={outlineButtonClass}>Cancelar</button><button className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">{pending ? 'Guardando...' : 'Guardar categoría'}</button></div>
+    </form>
+  </AdminModal>
+}
+
+function CouponEditorModal({ form, pending, onChange, onSubmit, onClose }: { form: Partial<DiscountCoupon>; pending: boolean; onChange: (value: Partial<DiscountCoupon>) => void; onSubmit: () => void; onClose: () => void }) {
+  return <AdminModal title={form.id ? 'Editar cupón' : 'Nuevo cupón'} onClose={onClose}>
+    <form className="grid gap-4" onSubmit={(event) => { event.preventDefault(); onSubmit() }}>
+      <div className="grid gap-4 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-medium">Código</span><input value={form.code || ''} onChange={(event) => onChange({ ...form, code: normalizeCouponCode(event.target.value) })} className={cn(inputClass, 'uppercase')} required /></label><label><span className="mb-2 block text-sm font-medium">Tipo</span><select value={form.type || 'percentage'} onChange={(event) => onChange({ ...form, type: event.target.value as DiscountCoupon['type'] })} className={inputClass}><option value="percentage">Porcentaje</option><option value="fixed">Monto fijo</option></select></label></div>
+      <label><span className="mb-2 block text-sm font-medium">Descripción</span><input value={form.description || ''} onChange={(event) => onChange({ ...form, description: event.target.value })} className={inputClass} /></label>
+      <div className="grid gap-4 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-medium">Valor</span><input type="number" min="0" value={form.value || 0} onChange={(event) => onChange({ ...form, value: Number(event.target.value) })} className={inputClass} /></label><label><span className="mb-2 block text-sm font-medium">Compra mínima</span><input type="number" min="0" value={form.minSubtotal ?? ''} onChange={(event) => onChange({ ...form, minSubtotal: event.target.value ? Number(event.target.value) : null })} className={inputClass} /></label></div>
+      <div className="grid gap-4 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-medium">Límite de usos</span><input type="number" min="0" value={form.usageLimit ?? ''} onChange={(event) => onChange({ ...form, usageLimit: event.target.value ? Number(event.target.value) : null })} className={inputClass} /></label><label className="flex items-end gap-3 pb-3 text-sm font-medium"><input type="checkbox" checked={Boolean(form.active)} onChange={(event) => onChange({ ...form, active: event.target.checked })} className="h-4 w-4 accent-[var(--color-accent)]" />Cupón activo</label></div>
+      <div className="grid gap-4 sm:grid-cols-2"><label><span className="mb-2 block text-sm font-medium">Desde</span><input type="datetime-local" value={form.startsAt || ''} onChange={(event) => onChange({ ...form, startsAt: event.target.value })} className={inputClass} /></label><label><span className="mb-2 block text-sm font-medium">Hasta</span><input type="datetime-local" value={form.endsAt || ''} onChange={(event) => onChange({ ...form, endsAt: event.target.value })} className={inputClass} /></label></div>
+      <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className={outlineButtonClass}>Cancelar</button><button className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">{pending ? 'Guardando...' : 'Guardar cupón'}</button></div>
+    </form>
+  </AdminModal>
+}
+
+function OrderEditorModal({ order, onClose, onStatusChange }: { order: Order; onClose: () => void; onStatusChange: (status: string) => void }) {
+  return <AdminModal title={`Pedido ${order.orderNumber}`} onClose={onClose}><div className="grid gap-4 text-sm"><div className="grid gap-4 rounded-2xl bg-[var(--color-surface)] p-4 sm:grid-cols-2"><p><b>Cliente:</b> {order.customerName}</p><p><b>Total:</b> {formatCurrency(order.total)}</p><p><b>Email:</b> {order.email}</p><p><b>Teléfono:</b> {order.phone}</p><p className="sm:col-span-2"><b>Envío:</b> {order.shippingLabel || 'Envío'} · {order.shippingCost ? formatCurrency(order.shippingCost) : 'Gratis'}</p><p className="sm:col-span-2"><b>Dirección:</b> {[order.address, order.city, order.province, order.postalCode].filter(Boolean).join(', ')}</p></div><label><span className="mb-2 block font-medium">Estado</span><select value={order.status} onChange={(event) => onStatusChange(event.target.value)} className={inputClass}>{['pending', 'paid', 'packing', 'shipped', 'cancelled'].map((status) => <option key={status} value={status}>{status}</option>)}</select></label></div></AdminModal>
+}
+
 export function AdminDashboardPage() {
   useSEO({ title: 'Dashboard admin' })
   const queryClient = useQueryClient()
@@ -568,7 +609,11 @@ export function AdminDashboardPage() {
   const [form, setForm] = useState<Partial<Product>>(emptyProductForm())
   const [categoryForm, setCategoryForm] = useState<Partial<Category>>(emptyCategoryForm)
   const [couponForm, setCouponForm] = useState<Partial<DiscountCoupon>>(emptyCouponForm)
+  const [categoryEditorOpen, setCategoryEditorOpen] = useState(false)
+  const [couponEditorOpen, setCouponEditorOpen] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [settingsForm, setSettingsForm] = useState<StoreSettings | null>(null)
+  const showLegacyPanels = false
   const categoryEditorRef = useRef<HTMLFormElement | null>(null)
 
   const productsQuery = useQuery({
@@ -623,6 +668,8 @@ export function AdminDashboardPage() {
   const allPageProductsSelected = pageProductIds.length > 0 && pageProductIds.every((id) => selectedProductIds.includes(id))
 
   const settingsDraft = settingsForm || settingsQuery.data || defaultSettingsForm
+  const categorySubcategoriesValue = (categoryForm.subcategories || []).join('\n')
+  const editingCategory = categories.find((category) => category.id === categoryForm.id) || null
 
   const refreshProducts = () => {
     queryClient.invalidateQueries({ queryKey: ['admin-products'] })
@@ -668,6 +715,7 @@ export function AdminDashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] })
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       setCategoryForm(emptyCategoryForm)
+      setCategoryEditorOpen(false)
     },
   })
 
@@ -692,6 +740,7 @@ export function AdminDashboardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-coupons'] })
       setCouponForm(emptyCouponForm)
+      setCouponEditorOpen(false)
     },
   })
 
@@ -771,20 +820,10 @@ export function AdminDashboardPage() {
     setProductEditorOpen(true)
   }
 
-  const categorySubcategoriesValue = (categoryForm.subcategories || []).join('\n')
-  const editingCategory = categories.find((category) => category.id === categoryForm.id) || null
-
-  function focusCategoryEditor() {
-    if (typeof window === 'undefined') return
-    window.requestAnimationFrame(() => {
-      categoryEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
-
   function openCategoryEditor(category: Category) {
     setCategoryForm(category)
     categoryMutation.reset()
-    focusCategoryEditor()
+    setCategoryEditorOpen(true)
   }
 
   function renderSidebar() {
@@ -865,6 +904,9 @@ export function AdminDashboardPage() {
         onUpload={uploadImage}
         pending={productMutation.isPending}
       />
+      {categoryEditorOpen ? <CategoryEditorModal form={categoryForm} pending={categoryMutation.isPending} onChange={setCategoryForm} onSubmit={() => categoryMutation.mutate()} onClose={() => setCategoryEditorOpen(false)} /> : null}
+      {couponEditorOpen ? <CouponEditorModal form={couponForm} pending={couponMutation.isPending} onChange={setCouponForm} onSubmit={() => couponMutation.mutate()} onClose={() => setCouponEditorOpen(false)} /> : null}
+      {selectedOrder ? <OrderEditorModal order={selectedOrder} onClose={() => setSelectedOrder(null)} onStatusChange={(status) => { setSelectedOrder((current) => current ? { ...current, status: status as Order['status'] } : null); orderStatusMutation.mutate({ id: selectedOrder.id, status }) }} /> : null}
 
       <div className="mx-auto max-w-[1800px] px-4 sm:px-6">
         <div className="grid gap-6 lg:grid-cols-4">
@@ -903,9 +945,13 @@ export function AdminDashboardPage() {
                   </div>
                 </div>
 
-                {activeTab === 'products' ? (
-                  <button type="button" onClick={openNewProduct} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
-                    Nuevo producto
+                {activeTab === 'products' || activeTab === 'categories' || activeTab === 'coupons' ? (
+                  <button type="button" onClick={() => {
+                    if (activeTab === 'products') openNewProduct()
+                    if (activeTab === 'categories') { setCategoryForm(emptyCategoryForm); setCategoryEditorOpen(true) }
+                    if (activeTab === 'coupons') { setCouponForm(emptyCouponForm); setCouponEditorOpen(true) }
+                  }} className="btn-primary rounded-full px-5 py-3 text-sm font-semibold">
+                    {activeTab === 'products' ? 'Nuevo producto' : activeTab === 'categories' ? 'Nueva categoría' : 'Nuevo cupón'}
                   </button>
                 ) : null}
               </div>
@@ -1058,6 +1104,22 @@ export function AdminDashboardPage() {
             ) : null}
 
             {activeTab === 'categories' ? (
+              <div className={cn(panelClass, 'overflow-hidden')}>
+                <div className="border-b border-[var(--color-border)] px-5 py-4 text-sm text-[var(--color-muted)]">{categories.length} categorías organizando el catálogo</div>
+                <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead className="bg-[var(--color-surface)] text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]"><tr><th className="px-5 py-4">Categoría</th><th className="px-4 py-4">Sitio</th><th className="px-4 py-4">Subcategorías</th><th className="px-5 py-4 text-right">Acciones</th></tr></thead><tbody className="divide-y divide-[var(--color-border)]">{categories.map((category) => <tr key={category.id} className="hover:bg-[var(--color-surface)]/60"><td className="px-5 py-4"><p className="font-semibold text-[var(--color-text)]">{category.name}</p><p className="mt-1 max-w-md truncate text-xs text-[var(--color-muted)]">{category.description || 'Sin descripción'}</p></td><td className="px-4 py-4 text-sm">{brandConfigs[category.site].shortName}</td><td className="px-4 py-4"><div className="flex max-w-sm flex-wrap gap-1">{category.subcategories.length ? category.subcategories.map((item) => <span key={item} className="rounded-full bg-[var(--color-surface)] px-2 py-1 text-xs">{item}</span>) : <span className="text-sm text-[var(--color-muted)]">Sin subcategorías</span>}</div></td><td className="px-5 py-4"><div className="flex justify-end gap-2"><button type="button" onClick={() => openCategoryEditor(category)} className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-white">Editar</button><button type="button" onClick={() => deleteCategoryMutation.mutate(category.id)} className="rounded-full border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-600">Eliminar</button></div></td></tr>)}</tbody></table></div>
+                {categoryDeleteError ? <p className="border-t border-rose-200 bg-rose-50 px-5 py-3 text-sm text-rose-700">{categoryDeleteError}</p> : null}
+              </div>
+            ) : null}
+
+            {activeTab === 'orders' ? (
+              <div className={cn(panelClass, 'overflow-hidden')}><div className="border-b border-[var(--color-border)] px-5 py-4 text-sm text-[var(--color-muted)]">{ordersQuery.data?.length || 0} pedidos recibidos</div><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left"><thead className="bg-[var(--color-surface)] text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]"><tr><th className="px-5 py-4">Pedido</th><th className="px-4 py-4">Cliente</th><th className="px-4 py-4">Envío</th><th className="px-4 py-4">Total</th><th className="px-4 py-4">Estado</th><th className="px-5 py-4 text-right">Acciones</th></tr></thead><tbody className="divide-y divide-[var(--color-border)]">{ordersQuery.data?.map((order) => <tr key={order.id} className="hover:bg-[var(--color-surface)]/60"><td className="px-5 py-4"><p className="font-semibold">{order.orderNumber}</p><p className="mt-1 text-xs text-[var(--color-muted)]">{order.createdAt ? new Date(order.createdAt).toLocaleDateString('es-AR') : ''}</p></td><td className="px-4 py-4"><p className="font-medium">{order.customerName}</p><p className="mt-1 text-xs text-[var(--color-muted)]">{order.email}</p></td><td className="px-4 py-4 text-sm">{order.shippingLabel || 'Envío'}<p className="mt-1 text-xs text-[var(--color-muted)]">{order.shippingCost ? formatCurrency(order.shippingCost) : 'Gratis'}</p></td><td className="px-4 py-4 font-semibold">{formatCurrency(order.total)}</td><td className="px-4 py-4"><span className="rounded-full bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold">{order.status}</span></td><td className="px-5 py-4 text-right"><button type="button" onClick={() => setSelectedOrder(order)} className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-white">Ver pedido</button></td></tr>)}</tbody></table></div></div>
+            ) : null}
+
+            {activeTab === 'coupons' ? (
+              <div className={cn(panelClass, 'overflow-hidden')}><div className="border-b border-[var(--color-border)] px-5 py-4 text-sm text-[var(--color-muted)]">{couponsQuery.data?.length || 0} cupones configurados</div><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left"><thead className="bg-[var(--color-surface)] text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]"><tr><th className="px-5 py-4">Código</th><th className="px-4 py-4">Beneficio</th><th className="px-4 py-4">Usos</th><th className="px-4 py-4">Estado</th><th className="px-5 py-4 text-right">Acciones</th></tr></thead><tbody className="divide-y divide-[var(--color-border)]">{couponsQuery.data?.map((coupon) => <tr key={coupon.id} className="hover:bg-[var(--color-surface)]/60"><td className="px-5 py-4"><p className="font-semibold">{coupon.code}</p><p className="mt-1 max-w-xs truncate text-xs text-[var(--color-muted)]">{coupon.description || 'Sin descripción'}</p></td><td className="px-4 py-4 text-sm font-semibold">{coupon.type === 'percentage' ? `${coupon.value}%` : formatCurrency(coupon.value)}{coupon.minSubtotal ? <p className="mt-1 text-xs font-normal text-[var(--color-muted)]">Mínimo: {formatCurrency(coupon.minSubtotal)}</p> : null}</td><td className="px-4 py-4 text-sm">{coupon.usageCount}{coupon.usageLimit ? ` / ${coupon.usageLimit}` : ' / sin límite'}</td><td className="px-4 py-4"><span className={cn('rounded-full px-3 py-1 text-xs font-semibold', coupon.active ? 'bg-emerald-100 text-emerald-700' : 'bg-[var(--color-surface)] text-[var(--color-muted)]')}>{coupon.active ? 'Activo' : 'Inactivo'}</span></td><td className="px-5 py-4"><div className="flex justify-end gap-2"><button type="button" onClick={() => { setCouponForm({ ...coupon, startsAt: toLocalDateTime(coupon.startsAt), endsAt: toLocalDateTime(coupon.endsAt) }); setCouponEditorOpen(true) }} className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-white">Editar</button><button type="button" onClick={() => deleteCouponMutation.mutate(coupon.id)} className="rounded-full border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-600">Eliminar</button></div></td></tr>)}</tbody></table></div></div>
+            ) : null}
+
+            {showLegacyPanels && activeTab === 'categories' ? (
               <div className="grid gap-6 xl:grid-cols-[360px,minmax(0,1fr)]">
                 <form
                   ref={categoryEditorRef}
@@ -1320,7 +1382,7 @@ export function AdminDashboardPage() {
               </div>
             ) : null}
 
-            {activeTab === 'orders' ? (
+            {showLegacyPanels && activeTab === 'orders' ? (
               <div className="grid gap-4">
                 {ordersQuery.data?.map((order) => (
                   <article key={order.id} className={cn(panelClass, 'p-6')}>
@@ -1353,7 +1415,7 @@ export function AdminDashboardPage() {
               </div>
             ) : null}
 
-            {activeTab === 'coupons' ? (
+            {showLegacyPanels && activeTab === 'coupons' ? (
               <div className="grid gap-6 2xl:grid-cols-[420px,minmax(0,1fr)]">
                 <form
                   className={cn(panelClass, 'p-6')}
