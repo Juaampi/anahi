@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Menu, ShoppingBag } from 'lucide-react'
+import { ChevronDown, ChevronRight, Menu, ShoppingBag } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, NavLink, useLocation } from 'react-router-dom'
@@ -26,7 +26,6 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
     queryFn: () => api.categories(currentSite),
   })
   const categories = categoriesQuery.data || []
-  const mobileCategory = categories.find((category) => category.slug === mobileCategorySlug)
   const cartCount = useMemo(
     () => items.reduce((acc, item) => acc + item.quantity, 0),
     [items],
@@ -170,22 +169,13 @@ export function Header({ theme, onThemeChange }: HeaderProps) {
             ))}
             {categories.length > 0 ? (
               <div className="rounded-[1.5rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
-                {mobileCategory ? (
-                  <>
-                    <button type="button" onClick={() => setMobileCategorySlug('')} className="flex w-full items-center gap-2 border-b border-[var(--color-border)] px-2 py-3 text-left text-sm font-semibold text-[var(--color-primary)]"><ChevronLeft size={17} /> {mobileCategory.name}</button>
-                    <div className="grid divide-y divide-[var(--color-border)]">
-                      <Link to={categoryPath(mobileCategory.slug)} onClick={() => { setOpen(false); setMobileCategorySlug('') }} className="flex items-center justify-between px-2 py-4 text-sm font-semibold text-[var(--color-primary)]">Ver todo <ChevronRight size={17} /></Link>
-                      {mobileCategory.subcategories.map((subcategory) => <Link key={subcategory} to={categoryPath(mobileCategory.slug, subcategory)} onClick={() => { setOpen(false); setMobileCategorySlug('') }} className="flex items-center justify-between px-2 py-4 text-sm text-[var(--color-primary)]">{subcategory}<ChevronRight size={17} /></Link>)}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Categorías</p>
-                    <div className="grid divide-y divide-[var(--color-border)]">
-                      {categories.map((category) => category.subcategories.length > 0 ? <button key={category.id} type="button" onClick={() => setMobileCategorySlug(category.slug)} className="flex items-center justify-between px-2 py-4 text-left text-sm font-semibold text-[var(--color-primary)]">{category.name}<ChevronRight size={17} /></button> : <Link key={category.id} to={categoryPath(category.slug)} onClick={() => setOpen(false)} className="flex items-center justify-between px-2 py-4 text-sm font-semibold text-[var(--color-primary)]">{category.name}<ChevronRight size={17} /></Link>)}
-                    </div>
-                  </>
-                )}
+                <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Categorías</p>
+                <div className="grid divide-y divide-[var(--color-border)]">
+                  {categories.map((category) => category.subcategories.length > 0 ? <div key={category.id}>
+                    <button type="button" onClick={() => setMobileCategorySlug((current) => current === category.slug ? '' : category.slug)} className="flex w-full items-center justify-between px-2 py-4 text-left text-sm font-semibold text-[var(--color-primary)]">{category.name}<ChevronDown size={17} className={cn('transition', mobileCategorySlug === category.slug && 'rotate-180')} /></button>
+                    {mobileCategorySlug === category.slug ? <div className="border-t border-[var(--color-border)] bg-[var(--color-surface-card)] px-3 py-2"><Link to={categoryPath(category.slug)} onClick={() => { setOpen(false); setMobileCategorySlug('') }} className="block rounded-xl bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-white">Ver todo</Link>{category.subcategories.map((subcategory) => <Link key={subcategory} to={categoryPath(category.slug, subcategory)} onClick={() => { setOpen(false); setMobileCategorySlug('') }} className="flex items-center justify-between border-b border-[var(--color-border)] px-3 py-3 text-sm text-[var(--color-primary)] last:border-0">{subcategory}<ChevronRight size={15} /></Link>)}</div> : null}
+                  </div> : <Link key={category.id} to={categoryPath(category.slug)} onClick={() => setOpen(false)} className="flex items-center justify-between px-2 py-4 text-sm font-semibold text-[var(--color-primary)]">{category.name}<ChevronRight size={17} /></Link>)}
+                </div>
               </div>
             ) : null}
             <Link
