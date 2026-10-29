@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, Menu, Package, Settings, Shapes, ShoppingCart, TicketPercent, Trash2, X } from 'lucide-react'
+import { Menu, Package, Settings, Shapes, ShoppingCart, TicketPercent, Trash2, X } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useSEO } from '../hooks/use-seo'
@@ -118,11 +118,6 @@ function parseSubcategories(value: string) {
         .filter(Boolean),
     ),
   )
-}
-
-function buildDuplicateSlug(slug?: string, name?: string) {
-  const base = slugify(slug || name || 'producto')
-  return `${base || 'producto'}-${Date.now().toString().slice(-6)}`
 }
 
 function normalizeInlineNumber(value: string) {
@@ -569,6 +564,8 @@ export function AdminDashboardPage() {
   const [uploadError, setUploadError] = useState('')
   const [productEditorOpen, setProductEditorOpen] = useState(false)
   const [productSearch, setProductSearch] = useState('')
+  const [productPage, setProductPage] = useState(1)
+  const [productsPerPage, setProductsPerPage] = useState(25)
   const [productListError, setProductListError] = useState('')
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
   const [bulkOperation, setBulkOperation] = useState<'set' | 'increase_percent' | 'decrease_percent' | 'increase_fixed' | 'decrease_fixed'>('set')
@@ -611,15 +608,26 @@ export function AdminDashboardPage() {
   const filteredProducts = useMemo(() => {
     const query = productSearch.trim().toLowerCase()
     const items = productsQuery.data || []
-    if (!query) return items
-    return items.filter(
+    const matchingItems = !query ? items : items.filter(
       (product) =>
         product.name.toLowerCase().includes(query) ||
         product.sku.toLowerCase().includes(query) ||
         product.categoryName.toLowerCase().includes(query) ||
         (product.brand || '').toLowerCase().includes(query),
     )
+    return [...matchingItems].sort((a, b) => a.name.localeCompare(b.name, 'es'))
   }, [productSearch, productsQuery.data])
+
+  const productPageCount = Math.max(1, Math.ceil(filteredProducts.length / productsPerPage))
+  const currentProductPage = Math.min(productPage, productPageCount)
+  const paginatedProducts = filteredProducts.slice(
+    (currentProductPage - 1) * productsPerPage,
+    currentProductPage * productsPerPage,
+  )
+  const firstProductOnPage = filteredProducts.length === 0 ? 0 : (currentProductPage - 1) * productsPerPage + 1
+  const lastProductOnPage = Math.min(currentProductPage * productsPerPage, filteredProducts.length)
+  const pageProductIds = paginatedProducts.map((product) => product.id)
+  const allPageProductsSelected = pageProductIds.length > 0 && pageProductIds.every((id) => selectedProductIds.includes(id))
 
   const settingsDraft = settingsForm || settingsQuery.data || defaultSettingsForm
 
@@ -637,18 +645,6 @@ export function AdminDashboardPage() {
       setForm(emptyProductForm())
       setUploadError('')
       setProductEditorOpen(false)
-    },
-  })
-
-  const stockMutation = useMutation({
-    mutationFn: ({ product, stock }: { product: Product; stock: number }) =>
-      api.updateProduct(token, product.id, { ...product, stock: Math.max(0, stock) }),
-    onSuccess: () => {
-      setProductListError('')
-      refreshProducts()
-    },
-    onError: (error) => {
-      setProductListError(error instanceof Error ? error.message : 'No se pudo actualizar el stock.')
     },
   })
 
@@ -799,23 +795,6 @@ export function AdminDashboardPage() {
       ...product,
       imageUrls: product.imageUrls?.length ? product.imageUrls : [''],
       variants: product.variants || [],
-    })
-    setUploadError('')
-    setProductEditorOpen(true)
-  }
-
-  function openDuplicateProduct(product: Product) {
-    setForm({
-      ...product,
-      id: undefined,
-      sku: '',
-      slug: buildDuplicateSlug(product.slug, product.name),
-      name: `${product.name} copia`,
-      imageUrls: product.imageUrls?.length ? [...product.imageUrls] : [''],
-      variants: (product.variants || []).map((variant, index) => ({
-        ...variant,
-        id: `copy-${Date.now()}-${index}`,
-      })),
     })
     setUploadError('')
     setProductEditorOpen(true)
@@ -982,13 +961,29 @@ export function AdminDashboardPage() {
 
             {activeTab === 'products' ? (
               <div className="grid gap-6">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr),220px,220px]">
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr),160px,220px,220px]">
                   <input
                     value={productSearch}
-                    onChange={(event) => setProductSearch(event.target.value)}
+                    onChange={(event) => {
+                      setProductSearch(event.target.value)
+                      setProductPage(1)
+                    }}
                     placeholder="Buscar por nombre, SKU o categoría"
                     className={cn(inputClass, panelClass)}
                   />
+                  <select
+                    value={productsPerPage}
+                    onChange={(event) => {
+                      setProductsPerPage(Number(event.target.value))
+                      setProductPage(1)
+                    }}
+                    className={cn(inputClass, panelClass)}
+                    aria-label="Productos por página"
+                  >
+                    <option value={25}>25 por página</option>
+                    <option value={50}>50 por página</option>
+                    <option value={100}>100 por página</option>
+                  </select>
                   <div className={cn(panelClass, 'px-5 py-4 text-sm text-[var(--color-muted)]')}>
                     {(productsQuery.data || []).length} productos cargados
                   </div>
@@ -1027,132 +1022,91 @@ export function AdminDashboardPage() {
                   </div>
                 ) : null}
 
-                <div className="grid gap-4">
-                  {filteredProducts.map((product) => (
-                    <article key={product.id} className={cn(panelClass, 'p-5')}>
-                      {(() => {
-                        const draft = getProductDraft(product)
-                        return (
-                      <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <input type="checkbox" checked={selectedProductIds.includes(product.id)} onChange={(event) => setSelectedProductIds((current) => event.target.checked ? [...current, product.id] : current.filter((id) => id !== product.id))} className="h-5 w-5 accent-[var(--color-accent)]" aria-label={`Seleccionar ${product.name}`} />
+                <div className={cn(panelClass, 'overflow-hidden')}>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[1080px] border-collapse text-left">
+                      <thead className="bg-[var(--color-surface)] text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">
+                        <tr>
+                          <th className="w-12 px-5 py-4">
                             <input
-                              value={draft.name}
-                              onChange={(event) => updateProductDraft(product, 'name', event.target.value)}
-                              className="min-w-[280px] flex-1 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-lg font-semibold text-[var(--color-text)] outline-none"
+                              type="checkbox"
+                              checked={allPageProductsSelected}
+                              onChange={(event) => setSelectedProductIds((current) => event.target.checked
+                                ? Array.from(new Set([...current, ...pageProductIds]))
+                                : current.filter((id) => !pageProductIds.includes(id)))}
+                              className="h-4 w-4 accent-[var(--color-accent)]"
+                              aria-label="Seleccionar productos de esta página"
                             />
-                            <span className="rounded-full bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-muted)]">
-                              {product.sku || 'Sin SKU'}
-                            </span>
-                            <span className="rounded-full bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-muted)]">
-                              {brandConfigs[product.site].shortName}
-                            </span>
-                            <span className={cn('rounded-full px-3 py-1 text-xs font-semibold', product.visible ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>{product.visible ? 'Visible' : 'Oculto'}</span>
-                          </div>
-                          <p className="mt-2 text-sm text-[var(--color-muted)]">
-                            {[product.categoryName, product.subcategory, product.brand].filter(Boolean).join(' · ')}
-                          </p>
-                          <div className="mt-3 flex flex-wrap gap-4">
-                            <label className="min-w-[150px]">
-                              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Precio</span>
-                              <input
-                                type="number"
-                                min="0"
-                                value={draft.price}
-                                onChange={(event) => updateProductDraft(product, 'price', event.target.value)}
-                                className={inputClass}
-                              />
-                            </label>
-                            <label className="min-w-[170px]">
-                              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Promocional</span>
-                              <input
-                                type="number"
-                                min="0"
-                                value={draft.compareAtPrice}
-                                onChange={(event) => updateProductDraft(product, 'compareAtPrice', event.target.value)}
-                                className={inputClass}
-                              />
-                            </label>
-                            <label className="min-w-[120px]">
-                              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Stock</span>
-                              <input
-                                type="number"
-                                min="0"
-                                value={draft.stock}
-                                onChange={(event) => updateProductDraft(product, 'stock', event.target.value)}
-                                className={inputClass}
-                              />
-                            </label>
-                          </div>
-                          <div className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--color-muted)]">
-                            <span>{product.variants.length} variantes</span>
-                            {product.featured ? <span>Destacado</span> : null}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                          <div className="rounded-[1.5rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
-                            <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-muted)]">Stock rápido</p>
-                            <div className="mt-2 flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => stockMutation.mutate({ product, stock: product.stock - 1 })}
-                                className={outlineButtonClass}
-                              >
-                                -
-                              </button>
-                              <input
-                                type="number"
-                                min="0"
-                                defaultValue={product.stock}
-                                onBlur={(event) =>
-                                  stockMutation.mutate({ product, stock: Number(event.target.value) || 0 })
-                                }
-                                className="w-24 rounded-full border border-[var(--color-border)] bg-white px-4 py-3 text-center text-sm font-semibold text-[var(--color-text)]"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => stockMutation.mutate({ product, stock: product.stock + 1 })}
-                                className={outlineButtonClass}
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => quickEditMutation.mutate(product)}
-                            className="btn-primary rounded-full px-4 py-3 text-sm font-semibold"
-                          >
-                            {quickEditMutation.isPending ? 'Guardando...' : 'Guardar'}
-                          </button>
-                          <button type="button" onClick={() => openDuplicateProduct(product)} className={outlineButtonClass}>
-                            <span className="inline-flex items-center gap-2">
-                              <Copy size={16} />
-                              Duplicar
-                            </span>
-                          </button>
-                          <button type="button" onClick={() => openEditProduct(product)} className={outlineButtonClass}>
-                            Editar
-                          </button>
-                          <button type="button" onClick={() => quickEditMutation.mutate({ ...product, visible: !product.visible })} className={outlineButtonClass}>
-                            {product.visible ? 'Ocultar' : 'Mostrar'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteProductMutation.mutate(product.id)}
-                            className="rounded-full border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600"
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      </div>
-                        )
-                      })()}
-                    </article>
-                  ))}
+                          </th>
+                          <th className="px-3 py-4">Producto</th>
+                          <th className="px-3 py-4">Categoría</th>
+                          <th className="px-3 py-4">Precio</th>
+                          <th className="px-3 py-4">Promo</th>
+                          <th className="px-3 py-4">Stock</th>
+                          <th className="px-3 py-4">Estado</th>
+                          <th className="px-5 py-4 text-right">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border)]">
+                        {paginatedProducts.map((product) => {
+                          const draft = getProductDraft(product)
+                          return (
+                            <tr key={product.id} className="hover:bg-[var(--color-surface)]/60">
+                              <td className="px-5 py-4 align-top">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedProductIds.includes(product.id)}
+                                  onChange={(event) => setSelectedProductIds((current) => event.target.checked ? [...current, product.id] : current.filter((id) => id !== product.id))}
+                                  className="h-4 w-4 accent-[var(--color-accent)]"
+                                  aria-label={`Seleccionar ${product.name}`}
+                                />
+                              </td>
+                              <td className="max-w-[280px] px-3 py-4 align-top">
+                                <p className="truncate font-semibold text-[var(--color-text)]" title={product.name}>{product.name}</p>
+                                <p className="mt-1 text-xs text-[var(--color-muted)]">{product.sku || 'Sin SKU'} · {brandConfigs[product.site].shortName}</p>
+                              </td>
+                              <td className="max-w-[180px] px-3 py-4 align-top text-sm text-[var(--color-muted)]">
+                                <p className="truncate">{product.categoryName}</p>
+                                {product.subcategory ? <p className="mt-1 truncate text-xs">{product.subcategory}</p> : null}
+                              </td>
+                              <td className="w-36 px-3 py-4 align-top">
+                                <input type="number" min="0" value={draft.price} onChange={(event) => updateProductDraft(product, 'price', event.target.value)} className="w-32 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]" aria-label={`Precio de ${product.name}`} />
+                              </td>
+                              <td className="w-36 px-3 py-4 align-top">
+                                <input type="number" min="0" value={draft.compareAtPrice} onChange={(event) => updateProductDraft(product, 'compareAtPrice', event.target.value)} className="w-32 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]" aria-label={`Precio promocional de ${product.name}`} />
+                              </td>
+                              <td className="w-28 px-3 py-4 align-top">
+                                <input type="number" min="0" value={draft.stock} onChange={(event) => updateProductDraft(product, 'stock', event.target.value)} className="w-24 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]" aria-label={`Stock de ${product.name}`} />
+                              </td>
+                              <td className="px-3 py-4 align-top">
+                                <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-semibold', product.visible ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>
+                                  {product.visible ? 'Visible' : 'Oculto'}
+                                </span>
+                                {product.stock <= 4 ? <p className="mt-2 text-xs font-medium text-amber-700">Stock bajo</p> : null}
+                              </td>
+                              <td className="px-5 py-4 align-top">
+                                <div className="flex justify-end gap-2">
+                                  <button type="button" onClick={() => quickEditMutation.mutate(product)} className="rounded-full bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-white">Guardar</button>
+                                  <button type="button" onClick={() => openEditProduct(product)} className="rounded-full border border-[var(--color-border)] px-3 py-2 text-xs font-semibold text-[var(--color-text)]">Editar</button>
+                                  <button type="button" onClick={() => quickEditMutation.mutate({ ...product, visible: !product.visible })} className="rounded-full border border-[var(--color-border)] px-3 py-2 text-xs font-semibold text-[var(--color-text)]">{product.visible ? 'Ocultar' : 'Mostrar'}</button>
+                                  <button type="button" onClick={() => deleteProductMutation.mutate(product.id)} className="rounded-full border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-600">Eliminar</button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {paginatedProducts.length === 0 ? <p className="px-5 py-12 text-center text-sm text-[var(--color-muted)]">No encontramos productos con esa búsqueda.</p> : null}
+                  <div className="flex flex-col gap-3 border-t border-[var(--color-border)] px-5 py-4 text-sm text-[var(--color-muted)] sm:flex-row sm:items-center sm:justify-between">
+                    <span>Mostrando {firstProductOnPage}–{lastProductOnPage} de {filteredProducts.length} productos</span>
+                    <div className="flex items-center gap-2">
+                      <button type="button" disabled={currentProductPage === 1} onClick={() => setProductPage((current) => Math.max(1, current - 1))} className="rounded-full border border-[var(--color-border)] px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-40">Anterior</button>
+                      <span className="min-w-24 text-center">Página {currentProductPage} de {productPageCount}</span>
+                      <button type="button" disabled={currentProductPage === productPageCount} onClick={() => setProductPage((current) => Math.min(productPageCount, current + 1))} className="rounded-full border border-[var(--color-border)] px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-40">Siguiente</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : null}
