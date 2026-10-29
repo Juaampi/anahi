@@ -120,12 +120,6 @@ function parseSubcategories(value: string) {
   )
 }
 
-function normalizeInlineNumber(value: string) {
-  if (!value.trim()) return 0
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
 function ProductEditorModal({
   open,
   form,
@@ -572,7 +566,6 @@ export function AdminDashboardPage() {
   const [bulkValue, setBulkValue] = useState('')
   const [categoryDeleteError, setCategoryDeleteError] = useState('')
   const [form, setForm] = useState<Partial<Product>>(emptyProductForm())
-  const [productDrafts, setProductDrafts] = useState<Record<string, { name: string; price: string; compareAtPrice: string; stock: string }>>({})
   const [categoryForm, setCategoryForm] = useState<Partial<Category>>(emptyCategoryForm)
   const [couponForm, setCouponForm] = useState<Partial<DiscountCoupon>>(emptyCouponForm)
   const [settingsForm, setSettingsForm] = useState<StoreSettings | null>(null)
@@ -656,28 +649,6 @@ export function AdminDashboardPage() {
     },
     onError: (error) => {
       setProductListError(error instanceof Error ? error.message : 'No se pudo eliminar el producto.')
-    },
-  })
-
-  const quickEditMutation = useMutation({
-    mutationFn: (product: Product) => {
-      const draft = productDrafts[product.id]
-      return api.updateProduct(token, product.id, {
-        ...product,
-        name: draft?.name ?? product.name,
-        price: normalizeInlineNumber(draft?.price ?? String(product.price)),
-        compareAtPrice: (draft?.compareAtPrice ?? '').trim()
-          ? normalizeInlineNumber(draft?.compareAtPrice ?? '')
-          : null,
-        stock: Math.max(0, normalizeInlineNumber(draft?.stock ?? String(product.stock))),
-      })
-    },
-    onSuccess: () => {
-      setProductListError('')
-      refreshProducts()
-    },
-    onError: (error) => {
-      setProductListError(error instanceof Error ? error.message : 'No se pudo guardar la edición rápida.')
     },
   })
 
@@ -800,27 +771,6 @@ export function AdminDashboardPage() {
     setProductEditorOpen(true)
   }
 
-  function getProductDraft(product: Product) {
-    return (
-      productDrafts[product.id] || {
-        name: product.name,
-        price: String(product.price ?? 0),
-        compareAtPrice: product.compareAtPrice ? String(product.compareAtPrice) : '',
-        stock: String(product.stock ?? 0),
-      }
-    )
-  }
-
-  function updateProductDraft(product: Product, field: 'name' | 'price' | 'compareAtPrice' | 'stock', value: string) {
-    setProductDrafts((current) => ({
-      ...current,
-      [product.id]: {
-        ...getProductDraft(product),
-        [field]: value,
-      },
-    }))
-  }
-
   const categorySubcategoriesValue = (categoryForm.subcategories || []).join('\n')
   const editingCategory = categories.find((category) => category.id === categoryForm.id) || null
 
@@ -916,9 +866,11 @@ export function AdminDashboardPage() {
         pending={productMutation.isPending}
       />
 
-      <div className="mx-auto max-w-[1600px] px-4 sm:px-6">
-        <div className="grid gap-6 lg:grid-cols-[280px,minmax(0,1fr)]">
-          <div className="hidden lg:block">{renderSidebar()}</div>
+      <div className="mx-auto max-w-[1800px] px-4 sm:px-6">
+        <div className="grid gap-6 lg:grid-cols-4">
+          <div className="hidden lg:col-span-1 lg:block">
+            <div className="sticky top-24 h-[calc(100vh-7rem)]">{renderSidebar()}</div>
+          </div>
 
           {sidebarOpen ? (
             <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)}>
@@ -928,7 +880,7 @@ export function AdminDashboardPage() {
             </div>
           ) : null}
 
-          <div className="min-w-0">
+          <div className="min-w-0 lg:col-span-3">
             <div className={cn(panelClass, 'mb-6 p-5 sm:p-6')}>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-start gap-3">
@@ -961,7 +913,7 @@ export function AdminDashboardPage() {
 
             {activeTab === 'products' ? (
               <div className="grid gap-6">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr),160px,220px,220px]">
+                <div className={cn(panelClass, 'grid gap-3 p-4 xl:grid-cols-12 xl:items-center')}>
                   <input
                     value={productSearch}
                     onChange={(event) => {
@@ -969,7 +921,7 @@ export function AdminDashboardPage() {
                       setProductPage(1)
                     }}
                     placeholder="Buscar por nombre, SKU o categoría"
-                    className={cn(inputClass, panelClass)}
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none xl:col-span-5"
                   />
                   <select
                     value={productsPerPage}
@@ -977,18 +929,20 @@ export function AdminDashboardPage() {
                       setProductsPerPage(Number(event.target.value))
                       setProductPage(1)
                     }}
-                    className={cn(inputClass, panelClass)}
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none xl:col-span-2"
                     aria-label="Productos por página"
                   >
                     <option value={25}>25 por página</option>
                     <option value={50}>50 por página</option>
                     <option value={100}>100 por página</option>
                   </select>
-                  <div className={cn(panelClass, 'px-5 py-4 text-sm text-[var(--color-muted)]')}>
-                    {(productsQuery.data || []).length} productos cargados
+                  <div className="rounded-xl bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-muted)] xl:col-span-2">
+                    <span className="block text-xs uppercase tracking-[0.12em]">Productos</span>
+                    <span className="mt-1 block font-semibold text-[var(--color-text)]">{(productsQuery.data || []).length} cargados</span>
                   </div>
-                  <div className={cn(panelClass, 'px-5 py-4 text-sm text-[var(--color-muted)]')}>
-                    {(productsQuery.data || []).filter((item) => item.stock <= 4).length} con stock bajo
+                  <div className="rounded-xl bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-muted)] xl:col-span-3">
+                    <span className="block text-xs uppercase tracking-[0.12em]">Atención</span>
+                    <span className="mt-1 block font-semibold text-amber-700">{(productsQuery.data || []).filter((item) => item.stock <= 4).length} con stock bajo</span>
                   </div>
                 </div>
 
@@ -1024,7 +978,7 @@ export function AdminDashboardPage() {
 
                 <div className={cn(panelClass, 'overflow-hidden')}>
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1080px] border-collapse text-left">
+                    <table className="w-full min-w-[900px] border-collapse text-left">
                       <thead className="bg-[var(--color-surface)] text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">
                         <tr>
                           <th className="w-12 px-5 py-4">
@@ -1041,16 +995,13 @@ export function AdminDashboardPage() {
                           <th className="px-3 py-4">Producto</th>
                           <th className="px-3 py-4">Categoría</th>
                           <th className="px-3 py-4">Precio</th>
-                          <th className="px-3 py-4">Promo</th>
                           <th className="px-3 py-4">Stock</th>
                           <th className="px-3 py-4">Estado</th>
                           <th className="px-5 py-4 text-right">Acciones</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)]">
-                        {paginatedProducts.map((product) => {
-                          const draft = getProductDraft(product)
-                          return (
+                        {paginatedProducts.map((product) => (
                             <tr key={product.id} className="hover:bg-[var(--color-surface)]/60">
                               <td className="px-5 py-4 align-top">
                                 <input
@@ -1069,14 +1020,12 @@ export function AdminDashboardPage() {
                                 <p className="truncate">{product.categoryName}</p>
                                 {product.subcategory ? <p className="mt-1 truncate text-xs">{product.subcategory}</p> : null}
                               </td>
-                              <td className="w-36 px-3 py-4 align-top">
-                                <input type="number" min="0" value={draft.price} onChange={(event) => updateProductDraft(product, 'price', event.target.value)} className="w-32 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]" aria-label={`Precio de ${product.name}`} />
-                              </td>
-                              <td className="w-36 px-3 py-4 align-top">
-                                <input type="number" min="0" value={draft.compareAtPrice} onChange={(event) => updateProductDraft(product, 'compareAtPrice', event.target.value)} className="w-32 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]" aria-label={`Precio promocional de ${product.name}`} />
+                              <td className="w-36 px-3 py-4 align-top text-sm font-semibold text-[var(--color-text)]">
+                                <p>{formatCurrency(product.price)}</p>
+                                {product.compareAtPrice ? <p className="mt-1 text-xs font-medium text-emerald-700">Promo: {formatCurrency(product.compareAtPrice)}</p> : <p className="mt-1 text-xs font-normal text-[var(--color-muted)]">Sin promoción</p>}
                               </td>
                               <td className="w-28 px-3 py-4 align-top">
-                                <input type="number" min="0" value={draft.stock} onChange={(event) => updateProductDraft(product, 'stock', event.target.value)} className="w-24 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]" aria-label={`Stock de ${product.name}`} />
+                                <span className={cn('inline-flex min-w-10 justify-center rounded-full px-3 py-1 text-sm font-semibold', product.stock <= 4 ? 'bg-amber-100 text-amber-700' : 'bg-[var(--color-surface)] text-[var(--color-text)]')}>{product.stock}</span>
                               </td>
                               <td className="px-3 py-4 align-top">
                                 <span className={cn('inline-flex rounded-full px-3 py-1 text-xs font-semibold', product.visible ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>
@@ -1086,15 +1035,12 @@ export function AdminDashboardPage() {
                               </td>
                               <td className="px-5 py-4 align-top">
                                 <div className="flex justify-end gap-2">
-                                  <button type="button" onClick={() => quickEditMutation.mutate(product)} className="rounded-full bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-white">Guardar</button>
-                                  <button type="button" onClick={() => openEditProduct(product)} className="rounded-full border border-[var(--color-border)] px-3 py-2 text-xs font-semibold text-[var(--color-text)]">Editar</button>
-                                  <button type="button" onClick={() => quickEditMutation.mutate({ ...product, visible: !product.visible })} className="rounded-full border border-[var(--color-border)] px-3 py-2 text-xs font-semibold text-[var(--color-text)]">{product.visible ? 'Ocultar' : 'Mostrar'}</button>
+                                  <button type="button" onClick={() => openEditProduct(product)} className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-xs font-semibold text-white">Editar</button>
                                   <button type="button" onClick={() => deleteProductMutation.mutate(product.id)} className="rounded-full border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-600">Eliminar</button>
                                 </div>
                               </td>
                             </tr>
-                          )
-                        })}
+                        ))}
                       </tbody>
                     </table>
                   </div>
